@@ -8,8 +8,6 @@
 
 
 std::string command_response;
-struct networkCredentials credential;
-struct networkCredentials *p_cred;
 
 
 std::string at_CommandWithReturn(String command, uint16_t timeout){
@@ -44,62 +42,60 @@ void at_command(String command, uint32_t timeout) {
   }
 }
 
-void sim7020_NbiotManager(){
-  eNbiotStateMachine eNextState = PDP_DEACT;
-
-  credential.socket_host = "www.blinkenlichten.info";
-  credential.socket_port = "80";
-  credential.http_page = "/print/origin.html";
-  credential.app_layer_method = "GET";
-  
+void SIM7020::NbiotManager(){
+  socket_host = "www.blinkenlichten.info";
+  socket_port = "80";
+  http_page = "/print/origin.html";
+  app_layer_method = "GET";
   
   while(1){
     switch(eNextState){
       case PDP_DEACT:
-        eNextState = NetworkAttachHandler();
+        eNextState = SIM7020::NetworkAttachHandler();
         break;
       
       case IP_INITIAL:
-        eNextState = StartTaskHandler(p_cred);
+        eNextState = SIM7020::StartTaskHandler(apn, user, psswd);
         break;
 
       case IP_START:
-        eNextState = BringUpGprsHandler();
+        eNextState = SIM7020::BringUpGprsHandler();
         break;
         
       case IP_CONFIG:
-        eNextState = WaitGprsHandler();
+        eNextState = SIM7020::WaitGprsHandler();
         break;  
         
       case IP_GPRSACT:
-        eNextState = GetLocalIpHandler();
+        eNextState = SIM7020::GetLocalIpHandler();
         break;
 
       case IP_STATUS:
-        eNextState = SocketConnectHandler(p_cred);
+        eNextState = SIM7020::SocketConnectHandler(socket_host, socket_port);
         break;        
 
       case TCP_CONNECTING:
-		eNextState = WaitSocketHandler();
+		eNextState = SIM7020::WaitSocketHandler();
         break;
 
       case CONNECT_OK:
-        eNextState = DataSendHandler(p_cred);
+        eNextState = SIM7020::DataSendHandler(app_layer_method, http_page, socket_host);
         break;
 
       case TCP_CLOSING:
-        eNextState = WaitSocketCloseHandler();  
+        eNextState = SIM7020::WaitSocketCloseHandler();  
         break;
 
       case TCP_CLOSED:
       Serial.println("Estado ainda n implementado - flag");
+	    return;
         break;
     }
   }
 }
 
 
-eNbiotStateMachine NetworkAttachHandler(){
+SIM7020::eNbiotStateMachine SIM7020::NetworkAttachHandler(){
   at_command("AT+CIPSHUT", 10000);
   at_command("AT+CIPMUX=0", 1000);
 
@@ -118,10 +114,9 @@ eNbiotStateMachine NetworkAttachHandler(){
 }
 
 
-eNbiotStateMachine StartTaskHandler(struct networkCredentials *p){
+SIM7020::eNbiotStateMachine SIM7020::StartTaskHandler(std::string apn, std::string user, std::string psswd){
   std::string aux_string;
-  p = &credential;
-  aux_string = "AT+CSTT=\"" + p->apn + "\",\"" + p->user + "\",\"" + p->psswd + "\"";
+  aux_string = "AT+CSTT=\"" + apn + "\",\"" + user + "\",\"" + psswd + "\"";
   at_command(aux_string.c_str(), 2000);
   aux_string.clear();
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
@@ -131,7 +126,7 @@ eNbiotStateMachine StartTaskHandler(struct networkCredentials *p){
 }
 
 
-eNbiotStateMachine BringUpGprsHandler(){
+SIM7020::eNbiotStateMachine SIM7020::BringUpGprsHandler(){
   at_command("AT+CIICR", 1000);
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
   if((command_response.find("IP CONFIG")) !=  std::string::npos)
@@ -144,7 +139,7 @@ eNbiotStateMachine BringUpGprsHandler(){
 }
 
 
-eNbiotStateMachine WaitGprsHandler(){
+SIM7020::eNbiotStateMachine SIM7020::WaitGprsHandler(){
   delay(1000);
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
   if((command_response.find("IP GPRSACT")) !=  std::string::npos)
@@ -153,7 +148,7 @@ eNbiotStateMachine WaitGprsHandler(){
 }
 
 
-eNbiotStateMachine GetLocalIpHandler(){
+SIM7020::eNbiotStateMachine SIM7020::GetLocalIpHandler(){
   at_command("AT+CIFSR", 1000);
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
   if((command_response.find("IP STATUS")) !=  std::string::npos)
@@ -162,11 +157,9 @@ eNbiotStateMachine GetLocalIpHandler(){
 }
 
 
-eNbiotStateMachine SocketConnectHandler(struct networkCredentials *p){
+SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(std::string host, std::string port){
   std::string aux_string;
-  
-  p = &credential;
-  aux_string = "AT+CIPSTART=\"TCP\",\"" +  p->socket_host + "\"," + p->socket_port;
+  aux_string = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + port;
   at_command(aux_string.c_str(), 2000);
   aux_string.clear();
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
@@ -178,7 +171,7 @@ eNbiotStateMachine SocketConnectHandler(struct networkCredentials *p){
 }
 
 
-eNbiotStateMachine WaitSocketHandler(){
+SIM7020::eNbiotStateMachine SIM7020::WaitSocketHandler(){
   delay(5000);
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
   if((command_response.find("CONNECT OK")) !=  std::string::npos)
@@ -187,10 +180,9 @@ eNbiotStateMachine WaitSocketHandler(){
 }
 
 
-eNbiotStateMachine DataSendHandler(struct networkCredentials *p){
+SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(std::string method, std::string page, std::string host){
   std::string aux_string, cipsend_str;
-  p_cred = &credential;
-  aux_string = p->app_layer_method + " " + p->http_page + " HTTP/1.0\r\nHost: " + p->socket_host + "\r\n\r\n";
+  aux_string = method + " " + page + " HTTP/1.0\r\nHost: " + host + "\r\n\r\n";
   at_command("AT+CIPSEND", 10000);
   Serial_AT.write(aux_string.c_str());
   Serial_AT.write(26);
@@ -207,7 +199,7 @@ eNbiotStateMachine DataSendHandler(struct networkCredentials *p){
 }
 
 
-eNbiotStateMachine WaitSocketCloseHandler(){
+SIM7020::eNbiotStateMachine SIM7020::WaitSocketCloseHandler(){
   delay(5000);
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
   if((command_response.find("TCP CLOSED")) !=  std::string::npos)

@@ -40,6 +40,8 @@ class SIM7020
     PDP_DEACT
   }eNbiotStateMachine;
   
+  eNbiotStateMachine eNextState;
+  
   public:
     SIM7020(uint8_t rx_pin, uint8_t tx_pin, uint8_t pwr_pin, std::string band){
 	  Serial_AT.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin);
@@ -48,67 +50,32 @@ class SIM7020
 	  pwr = pwr_pin;
       pinMode(pwr_pin, OUTPUT);
       digitalWrite(pwr_pin, HIGH);
-	  rf_band = band;
+	  rf_band = band; 
 	  
+	  eNextState = PDP_DEACT;
 	}
 	
 	void set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd);
 	void set_RFBand(std::string band);
-	void set_Host;
+	//void set_Host(std::string);
 	
 	void HwInit(void);
+	void NbiotManager(void);
 	
     eNbiotStateMachine NetworkAttachHandler(void);
-    eNbiotStateMachine StartTaskHandler(struct networkCredentials *p);
+    eNbiotStateMachine StartTaskHandler(std::string apn, std::string user, std::string psswd);
     eNbiotStateMachine BringUpGprsHandler(void);
     eNbiotStateMachine WaitGprsHandler(void);
     eNbiotStateMachine GetLocalIpHandler(void);
-    eNbiotStateMachine SocketConnectHandler(struct networkCredentials *p);
+    eNbiotStateMachine SocketConnectHandler(std::string host, std::string port);
     eNbiotStateMachine WaitSocketHandler(void);
-    eNbiotStateMachine DataSendHandler(struct networkCredentials *p);
+    eNbiotStateMachine DataSendHandler(std::string method, std::string page, std::string host);
     eNbiotStateMachine WaitSocketCloseHandler(void);
 };
 
 //=====================================================================================================================================
 
-typedef enum NbiotStateMachineEnum{
-  IP_INITIAL,
-  IP_START,
-  IP_CONFIG,
-  IP_GPRSACT,
-  IP_STATUS,
-  TCP_CONNECTING,
-  CONNECT_OK,
-  TCP_CLOSING,
-  TCP_CLOSED,
-  PDP_DEACT
-}eNbiotStateMachine;
-
-struct networkCredentials{
-  const std::string apn = "virtueyes.com.br";
-  const std::string user = "virtu";
-  const std::string psswd = "virtu";
-  std::string socket_host;
-  std::string socket_port;
-  std::string transport_layer_protocol;
-  std::string http_page;
-  std::string app_layer_method;
-};
-
 void at_command(String command, uint32_t timeout);
 std::string at_CommandWithReturn(String command, uint16_t timeout);
-
-void sim7020_HwInit(std::string rf_band);
-void sim7020_NbiotManager(void);
-
-eNbiotStateMachine NetworkAttachHandler(void);
-eNbiotStateMachine StartTaskHandler(struct networkCredentials *p);
-eNbiotStateMachine BringUpGprsHandler(void);
-eNbiotStateMachine WaitGprsHandler(void);
-eNbiotStateMachine GetLocalIpHandler(void);
-eNbiotStateMachine SocketConnectHandler(struct networkCredentials *p);
-eNbiotStateMachine WaitSocketHandler(void);
-eNbiotStateMachine DataSendHandler(struct networkCredentials *p);
-eNbiotStateMachine WaitSocketCloseHandler(void);
 
 #endif
