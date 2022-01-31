@@ -44,75 +44,6 @@ void at_command(String command, uint32_t timeout) {
   }
 }
 
-
-void sim7020_HwInit(std::string rf_band){
-  std::string aux_string;
-  
-  Serial_AT.begin(UART_BAUD, SERIAL_8N1, PIN_RX, PIN_TX);
-  delay(100);
-
-  pinMode(PWR_PIN, OUTPUT);
-  digitalWrite(PWR_PIN, HIGH);
-
-  p_cred = &credential;
-
-  #ifdef DEBUG_MODE
-  at_command("AT", 500);
-  at_command("ATE1", 500);
-  #endif
-
-  #ifndef DEBUG_MODE
-  at_command("ATE0", 500);
-  #endif
-  
-  command_response = at_CommandWithReturn("AT+CPIN?", 1000);
-  while( (command_response.find("ERROR")) !=  std::string::npos){  
-    digitalWrite(PWR_PIN, LOW);
-    delay(10000);
-    digitalWrite(PWR_PIN, HIGH);
-    command_response = at_CommandWithReturn("AT+CPIN?", 1000);
-  }
-
-  command_response.clear();
-
-  aux_string = "AT*MCGDEFCONT=\"IP\",\"" + p_cred->apn + "\",\"" + p_cred->user + "\",\"" + p_cred->psswd + "\"";
-  
-  at_command("AT+CFUN=0", 1000); //turn-off rf
-  at_command("AT+CREG=2", 500);
-  at_command(aux_string.c_str(), 2000);
-  at_command("AT+CFUN=1", 1000); //turn-on rf
-
-  aux_string.clear();
-  
-  aux_string = "AT+CBAND=" + rf_band;
-  at_command(aux_string.c_str(), 1000);
-  
-  at_command("AT+COPS=0,0", 1000);
-  at_command("AT+CGCONTRDP", 1000);
-
-  #ifdef DEBUG_MODE
-  at_command("AT+CMEE=2",500);
-  Serial.print("SIM7020 firmware version: ");
-  at_command("AT+CGMR", 500);
-  Serial.print("APN settings: ");
-  at_command("AT*MCGDEFCONT?", 500);
-  Serial.print("Banda: ");
-  at_command("AT+CBAND?", 500);
-  Serial.print("Internet register status: ");
-  at_command("AT+CGREG?", 500);
-  Serial.print("Network Information: ");
-  at_command("AT+COPS?", 500);
-  Serial.print("Signal quality: ");
-  at_command("AT+CSQ", 500);
-  Serial.print("GPRS service attachment: ");
-  at_command("AT+CGATT?", 500);
-  Serial.print("PDP context definition: ");
-  at_command("AT+CGDCONT?", 500);
-  Serial.println("\n\nDiagnostic completed!");
-  #endif
-}
-
-
 void sim7020_NbiotManager(){
   eNbiotStateMachine eNextState = PDP_DEACT;
 
@@ -233,6 +164,7 @@ eNbiotStateMachine GetLocalIpHandler(){
 
 eNbiotStateMachine SocketConnectHandler(struct networkCredentials *p){
   std::string aux_string;
+  
   p = &credential;
   aux_string = "AT+CIPSTART=\"TCP\",\"" +  p->socket_host + "\"," + p->socket_port;
   at_command(aux_string.c_str(), 2000);
@@ -281,4 +213,76 @@ eNbiotStateMachine WaitSocketCloseHandler(){
   if((command_response.find("TCP CLOSED")) !=  std::string::npos)
     return TCP_CLOSED;
   command_response.clear();
+}
+
+
+void SIM7020::set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd){
+  apn = user_apn;
+  user = username;
+  psswd = user_psswd;
+}
+
+
+void SIM7020::set_RFBand(std::string band){
+	rf_band = band;
+}
+
+
+void SIM7020::HwInit(){
+  std::string aux_string;
+
+  #ifdef DEBUG_MODE
+  at_command("AT", 500);
+  at_command("ATE1", 500);
+  #endif
+
+  #ifndef DEBUG_MODE
+  at_command("ATE0", 500);
+  #endif
+  
+  command_response = at_CommandWithReturn("AT+CPIN?", 1000);
+  while( (command_response.find("ERROR")) !=  std::string::npos){  
+    digitalWrite(pwr, LOW);
+    delay(10000);
+    digitalWrite(pwr, HIGH);
+    command_response = at_CommandWithReturn("AT+CPIN?", 1000);
+  }
+
+  command_response.clear();
+
+  aux_string = "AT*MCGDEFCONT=\"IP\",\"" + apn + "\",\"" + user + "\",\"" + psswd + "\"";
+  
+  at_command("AT+CFUN=0", 1000); //turn-off rf
+  at_command("AT+CREG=2", 500);
+  at_command(aux_string.c_str(), 2000);
+  at_command("AT+CFUN=1", 1000); //turn-on rf
+
+  aux_string.clear();
+  
+  aux_string = "AT+CBAND=" + rf_band;
+  at_command(aux_string.c_str(), 1000);
+  
+  at_command("AT+COPS=0,0", 1000);
+  at_command("AT+CGCONTRDP", 1000);
+
+  #ifdef DEBUG_MODE
+  at_command("AT+CMEE=2",500);
+  Serial.print("SIM7020 firmware version: ");
+  at_command("AT+CGMR", 500);
+  Serial.print("APN settings: ");
+  at_command("AT*MCGDEFCONT?", 500);
+  Serial.print("Banda: ");
+  at_command("AT+CBAND?", 500);
+  Serial.print("Internet register status: ");
+  at_command("AT+CGREG?", 500);
+  Serial.print("Network Information: ");
+  at_command("AT+COPS?", 500);
+  Serial.print("Signal quality: ");
+  at_command("AT+CSQ", 500);
+  Serial.print("GPRS service attachment: ");
+  at_command("AT+CGATT?", 500);
+  Serial.print("PDP context definition: ");
+  at_command("AT+CGDCONT?", 500);
+  Serial.println("\n\nDiagnostic completed!");
+  #endif
 }
