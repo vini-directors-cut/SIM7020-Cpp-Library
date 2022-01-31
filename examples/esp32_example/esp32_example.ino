@@ -12,7 +12,9 @@ void setup() {
   
   nb_modem.HwInit();
 
-  //sim7020_NbiotManager();
+  nb_modem.NbiotManager();
+
+  nb_modem.NbiotManager();
 }
 
 void loop() {
