@@ -42,11 +42,73 @@ void at_command(String command, uint32_t timeout) {
   }
 }
 
+
+void SIM7020::HwInit(){
+  std::string aux_string;
+
+  #ifdef DEBUG_MODE
+  at_command("AT", 500);
+  at_command("ATE1", 500);
+  #endif
+
+  #ifndef DEBUG_MODE
+  at_command("ATE0", 500);
+  #endif
+  
+  command_response = at_CommandWithReturn("AT+CPIN?", 1000);
+  while( (command_response.find("ERROR")) !=  std::string::npos){  
+    digitalWrite(pwr, LOW);
+    delay(10000);
+    digitalWrite(pwr, HIGH);
+    command_response = at_CommandWithReturn("AT+CPIN?", 1000);
+  }
+
+  command_response.clear();
+
+  aux_string = "AT*MCGDEFCONT=\"IP\",\"" + apn + "\",\"" + user + "\",\"" + psswd + "\"";
+  
+  at_command("AT+CFUN=0", 1000); //turn-off rf
+  at_command("AT+CREG=2", 500);
+  at_command(aux_string.c_str(), 2000);
+  at_command("AT+CFUN=1", 1000); //turn-on rf
+
+  aux_string.clear();
+  
+  aux_string = "AT+CBAND=" + rf_band;
+  at_command(aux_string.c_str(), 1000);
+  
+  at_command("AT+COPS=0,0", 1000);
+  at_command("AT+CGCONTRDP", 1000);
+
+  #ifdef DEBUG_MODE
+  at_command("AT+CMEE=2",500);
+  Serial.print("SIM7020 firmware version: ");
+  at_command("AT+CGMR", 500);
+  Serial.print("APN settings: ");
+  at_command("AT*MCGDEFCONT?", 500);
+  Serial.print("Banda: ");
+  at_command("AT+CBAND?", 500);
+  Serial.print("Internet register status: ");
+  at_command("AT+CGREG?", 500);
+  Serial.print("Network Information: ");
+  at_command("AT+COPS?", 500);
+  Serial.print("Signal quality: ");
+  at_command("AT+CSQ", 500);
+  Serial.print("GPRS service attachment: ");
+  at_command("AT+CGATT?", 500);
+  Serial.print("PDP context definition: ");
+  at_command("AT+CGDCONT?", 500);
+  Serial.println("\n\nDiagnostic completed!");
+  #endif
+}
+
+
 void SIM7020::NbiotManager(){
   socket_host = "www.blinkenlichten.info";
   socket_port = "80";
   http_page = "/print/origin.html";
   app_layer_method = "GET";
+  app_layer_protocol = "http";
   
   while(1){
     switch(eNextState){
@@ -71,7 +133,7 @@ void SIM7020::NbiotManager(){
         break;
 
       case IP_STATUS:
-        eNextState = SIM7020::SocketConnectHandler(socket_host, socket_port);
+        eNextState = SIM7020::SocketConnectHandler(app_layer_protocol, socket_host, socket_port);
         break;        
 
       case TCP_CONNECTING:
@@ -142,9 +204,10 @@ SIM7020::eNbiotStateMachine SIM7020::BringUpGprsHandler(){
 SIM7020::eNbiotStateMachine SIM7020::WaitGprsHandler(){
   delay(1000);
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
-  if((command_response.find("IP GPRSACT")) !=  std::string::npos)
+  if((command_response.find("IP GPRSACT")) !=  std::string::npos){
+    command_response.clear();
     return IP_GPRSACT;
-  command_response.clear();
+  }
 }
 
 
@@ -152,49 +215,74 @@ SIM7020::eNbiotStateMachine SIM7020::GetLocalIpHandler(){
   at_command("AT+CIFSR", 1000);
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
   if((command_response.find("IP STATUS")) !=  std::string::npos)
+    command_response.clear();
     return IP_STATUS;
-  command_response.clear();  
 }
 
 
-SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(std::string host, std::string port){
+SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(std::string app_protocol, std::string host, std::string port){
   std::string aux_string;
-  aux_string = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + port;
-  at_command(aux_string.c_str(), 2000);
-  aux_string.clear();
-  command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
-  if((command_response.find("CONNECT OK")) !=  std::string::npos)
-    return CONNECT_OK;
-  else if((command_response.find("TCP CONNECTING")) !=  std::string::npos)
-    return TCP_CONNECTING;
-  command_response.clear();
+    if(app_layer_protocol.find("http") != std::string::npos){
+    aux_string = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + port;
+    at_command(aux_string.c_str(), 2000);
+    aux_string.clear();
+    command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
+    if((command_response.find("CONNECT OK")) !=  std::string::npos)
+      return CONNECT_OK;
+    else if((command_response.find("TCP CONNECTING")) !=  std::string::npos){
+      command_response.clear();
+      return TCP_CONNECTING;
+      }
+  }
+
+  else if(app_layer_protocol.find("mqtt") != std::string::npos){
+    aux_string = "AT+CMQNEW=\"" + host + "\",\"" + port + "\",\"12000\",\"100\"";
+    at_command(aux_string.c_str(), 12000);
+    aux_string.clear();
+
+    aux_string = "AT+CMQCON=\"0\",\"3\",\"myclient\",\"600\",\"0\", \"0\"";
+    command_response = at_CommandWithReturn(aux_string.c_str(), 5000);
+    if((command_response.find("OK")) !=  std::string::npos){
+      command_response.clear();
+      return CONNECT_OK;
+    }
+  }
 }
 
 
 SIM7020::eNbiotStateMachine SIM7020::WaitSocketHandler(){
   delay(5000);
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
-  if((command_response.find("CONNECT OK")) !=  std::string::npos)
+  if((command_response.find("CONNECT OK")) !=  std::string::npos){
+    command_response.clear();
     return CONNECT_OK;
-  command_response.clear();
+  }
 }
 
 
-SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(std::string method, std::string page, std::string host){
+SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(std::string method, std::string page_file_topic, std::string host){
   std::string aux_string, cipsend_str;
-  aux_string = method + " " + page + " HTTP/1.0\r\nHost: " + host + "\r\n\r\n";
-  at_command("AT+CIPSEND", 10000);
-  Serial_AT.write(aux_string.c_str());
-  Serial_AT.write(26);
-
-  at_command("AT+CIPCLOSE", 1000);
   
-  command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
-  if((command_response.find("TCP CLOSED")) !=  std::string::npos)
-    return TCP_CLOSED;
-  else if((command_response.find("CONNECT OK")) !=  std::string::npos){
-     at_command("AT+CIPCLOSE", 1000);
-     return TCP_CLOSED;
+  if(app_layer_protocol.find("http") != std::string::npos){
+    aux_string = method + " " + page_file_topic + " HTTP/1.0\r\nHost: " + host + "\r\n\r\n";
+    at_command("AT+CIPSEND", 10000);
+    Serial_AT.write(aux_string.c_str());
+    Serial_AT.write(26);
+    at_command("AT+CIPCLOSE", 1000);
+    command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
+    if((command_response.find("TCP CLOSED")) !=  std::string::npos)
+      return TCP_CLOSED;
+    else if((command_response.find("CONNECT OK")) !=  std::string::npos){
+        at_command("AT+CIPCLOSE", 1000);
+        return TCP_CLOSED;
+  }   
+
+  else if(app_layer_protocol.find("mqtt") != std::string::npos){
+    aux_command_before = "AT+CMQSUB=\"0\",\"esp32/NbioT\",\"1\"";
+    at_command(aux_command_before.c_str(), 5000);
+    aux_command_pub = "AT+CMQPUB=\"0\",\"esp32/NbioT\",\"1\",\"0\",\"0\",\"8\",\"12345678\"";
+    at_command(aux_command_pub.c_str(), 5000);
+    }
   }
 }
 
@@ -202,9 +290,10 @@ SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(std::string method, std::st
 SIM7020::eNbiotStateMachine SIM7020::WaitSocketCloseHandler(){
   delay(5000);
   command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
-  if((command_response.find("TCP CLOSED")) !=  std::string::npos)
+  if((command_response.find("TCP CLOSED")) !=  std::string::npos){
+    command_response.clear();
     return TCP_CLOSED;
-  command_response.clear();
+    }
 }
 
 
@@ -217,64 +306,4 @@ void SIM7020::set_NetworkCredentials(std::string user_apn, std::string username,
 
 void SIM7020::set_RFBand(std::string band){
 	rf_band = band;
-}
-
-
-void SIM7020::HwInit(){
-  std::string aux_string;
-
-  #ifdef DEBUG_MODE
-  at_command("AT", 500);
-  at_command("ATE1", 500);
-  #endif
-
-  #ifndef DEBUG_MODE
-  at_command("ATE0", 500);
-  #endif
-  
-  command_response = at_CommandWithReturn("AT+CPIN?", 1000);
-  while( (command_response.find("ERROR")) !=  std::string::npos){  
-    digitalWrite(pwr, LOW);
-    delay(10000);
-    digitalWrite(pwr, HIGH);
-    command_response = at_CommandWithReturn("AT+CPIN?", 1000);
-  }
-
-  command_response.clear();
-
-  aux_string = "AT*MCGDEFCONT=\"IP\",\"" + apn + "\",\"" + user + "\",\"" + psswd + "\"";
-  
-  at_command("AT+CFUN=0", 1000); //turn-off rf
-  at_command("AT+CREG=2", 500);
-  at_command(aux_string.c_str(), 2000);
-  at_command("AT+CFUN=1", 1000); //turn-on rf
-
-  aux_string.clear();
-  
-  aux_string = "AT+CBAND=" + rf_band;
-  at_command(aux_string.c_str(), 1000);
-  
-  at_command("AT+COPS=0,0", 1000);
-  at_command("AT+CGCONTRDP", 1000);
-
-  #ifdef DEBUG_MODE
-  at_command("AT+CMEE=2",500);
-  Serial.print("SIM7020 firmware version: ");
-  at_command("AT+CGMR", 500);
-  Serial.print("APN settings: ");
-  at_command("AT*MCGDEFCONT?", 500);
-  Serial.print("Banda: ");
-  at_command("AT+CBAND?", 500);
-  Serial.print("Internet register status: ");
-  at_command("AT+CGREG?", 500);
-  Serial.print("Network Information: ");
-  at_command("AT+COPS?", 500);
-  Serial.print("Signal quality: ");
-  at_command("AT+CSQ", 500);
-  Serial.print("GPRS service attachment: ");
-  at_command("AT+CGATT?", 500);
-  Serial.print("PDP context definition: ");
-  at_command("AT+CGDCONT?", 500);
-  Serial.println("\n\nDiagnostic completed!");
-  #endif
 }
