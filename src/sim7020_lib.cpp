@@ -104,9 +104,9 @@ void SIM7020::HwInit(){
 
 
 void SIM7020::NbiotManager(){
-  socket_host = "www.blinkenlichten.info";
+  socket_host = "www.cropnet.us";
   socket_port = "80";
-  http_page = "/print/origin.html";
+  http_page = "/test/now";
   app_layer_method = "GET";
   app_layer_protocol = "http";
   
@@ -117,7 +117,7 @@ void SIM7020::NbiotManager(){
         break;
       
       case IP_INITIAL:
-        eNextState = SIM7020::StartTaskHandler(apn, user, psswd);
+        eNextState = SIM7020::StartTaskHandler();
         break;
 
       case IP_START:
@@ -133,7 +133,7 @@ void SIM7020::NbiotManager(){
         break;
 
       case IP_STATUS:
-        eNextState = SIM7020::SocketConnectHandler(app_layer_protocol, socket_host, socket_port);
+        eNextState = SIM7020::SocketConnectHandler();
         break;        
 
       case TCP_CONNECTING:
@@ -141,7 +141,7 @@ void SIM7020::NbiotManager(){
         break;
 
       case CONNECT_OK:
-        eNextState = SIM7020::DataSendHandler(app_layer_method, http_page, socket_host);
+        eNextState = SIM7020::DataSendHandler();
         break;
 
       case TCP_CLOSING:
@@ -154,6 +154,28 @@ void SIM7020::NbiotManager(){
         break;
     }
   }
+}
+
+
+void SIM7020::set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd){
+  apn = user_apn;
+  user = username;
+  psswd = user_psswd;
+}
+
+
+void SIM7020::set_RFBand(std::string band){
+	rf_band = band;
+}
+
+
+void SIM7020::set_HttpVersion(std::string version){
+  http_version = version;
+}
+
+
+void SIM7020::set_HttpHeader(std::string header){
+  http_header = header;
 }
 
 
@@ -176,7 +198,7 @@ SIM7020::eNbiotStateMachine SIM7020::NetworkAttachHandler(){
 }
 
 
-SIM7020::eNbiotStateMachine SIM7020::StartTaskHandler(std::string apn, std::string user, std::string psswd){
+SIM7020::eNbiotStateMachine SIM7020::StartTaskHandler(){
   std::string aux_string;
   aux_string = "AT+CSTT=\"" + apn + "\",\"" + user + "\",\"" + psswd + "\"";
   at_command(aux_string.c_str(), 2000);
@@ -220,10 +242,10 @@ SIM7020::eNbiotStateMachine SIM7020::GetLocalIpHandler(){
 }
 
 
-SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(std::string app_protocol, std::string host, std::string port){
+SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(){
   std::string aux_string;
     if(app_layer_protocol.find("http") != std::string::npos){
-    aux_string = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + port;
+    aux_string = "AT+CIPSTART=\"TCP\",\"" + socket_host + "\"," + socket_port;
     at_command(aux_string.c_str(), 2000);
     aux_string.clear();
     command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
@@ -236,7 +258,7 @@ SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(std::string app_protoc
   }
 
   else if(app_layer_protocol.find("mqtt") != std::string::npos){
-    aux_string = "AT+CMQNEW=\"" + host + "\",\"" + port + "\",\"12000\",\"100\"";
+    aux_string = "AT+CMQNEW=\"" + socket_host + "\",\"" + socket_port + "\",\"12000\",\"100\"";
     at_command(aux_string.c_str(), 12000);
     aux_string.clear();
 
@@ -260,11 +282,45 @@ SIM7020::eNbiotStateMachine SIM7020::WaitSocketHandler(){
 }
 
 
-SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(std::string method, std::string page_file_topic, std::string host){
+SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(){
   std::string aux_string, cipsend_str;
-  
+
+  std::string test_payload;
+  /*test_payload = 
+  "[\r\n"
+  "  {\r\n"
+  "    \"macAddress\": \"6e:22:81:c1:04:fd\",\r\n"
+  "    \"picDataList\": [\r\n"
+  "      {\r\n"
+  "        \"updated\": \"2021-12-01 15:59:50\",\r\n"
+  "        \"started\": \"2022-02-01 15:00:00\",\r\n"
+  "        \"finished\": \"2022-02-01 16:00:00\",\r\n"
+  "        \"rain\": 0.0,\r\n"
+  "        \"created\": \"2022-02-01 15:00:26\",\r\n"
+  "        \"rain2\": 0.4\r\n"
+  "      }\r\n"
+  "    ],\r\n"
+  "    \"picName\": \"hdw2599\",\r\n"
+  "    \"pivotDataList\": [],\r\n"
+  "    \"picRebootHistoryList\": [],\r\n"
+  "    \"picVersion\": \"4.5.6\"\r\n"
+  "  }\r\n"
+  "]\r\n";
+  */
+
+  test_payload = "[{\"macAddress\":\"6e:22:81:c1:04:fd\",\"picDataList\":[{\"updated\":\"2022-02-01 15:59:59\",\"started\":\"2022-02-01 15:00:00\",\"atmosphericPressureSensor\":\"BME280\",\"finished\":\"2022-02-01 16:00:00\",\"rain\":0.2,\"created\":\"2022-02-01 15:00:26\",\"rain2\":0.4}],\"picName\":\"hdw2599\",\"pivotDataList\":[],\"picRebootHistoryList\":[],\"picVersion\":\"4.5.6\"}]";
+
+  std::string test_header = "Accept: */*\r\n"
+    "uptime: 2\r\n"
+    "MacAddress: 6e:22:81:c1:04:fd\r\n"
+    "PICName: hdw2599\r\n"
+    "PICVersion: 4.5.6\r\n"
+    "Content-Type: application/json\r\n";
+
   if(app_layer_protocol.find("http") != std::string::npos){
-    aux_string = method + " " + page_file_topic + " HTTP/1.0\r\nHost: " + host + "\r\n\r\n";
+    aux_string = app_layer_method + " " + http_page + " " + http_version + "\r\n" + http_header + "\r\n"; //para get
+    //aux_string = app_layer_method + " " + http_page + " HTTP/1.1\r\nHost: " + (socket_host+"\r\n")  + test_header + "\r\n" + test_payload; //para post
+    //aux_string = method + " " + page + " HTTP/1.0\r\nHost: " + (socket_host+"\r\n") + "\r\n" + test_payload; //para post
     at_command("AT+CIPSEND", 10000);
     Serial_AT.write(aux_string.c_str());
     Serial_AT.write(26);
@@ -275,14 +331,15 @@ SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(std::string method, std::st
     else if((command_response.find("CONNECT OK")) !=  std::string::npos){
         at_command("AT+CIPCLOSE", 1000);
         return TCP_CLOSED;
+    }
   }   
 
   else if(app_layer_protocol.find("mqtt") != std::string::npos){
-    aux_command_before = "AT+CMQSUB=\"0\",\"esp32/NbioT\",\"1\"";
-    at_command(aux_command_before.c_str(), 5000);
-    aux_command_pub = "AT+CMQPUB=\"0\",\"esp32/NbioT\",\"1\",\"0\",\"0\",\"8\",\"12345678\"";
-    at_command(aux_command_pub.c_str(), 5000);
-    }
+    aux_string = "AT+CMQSUB=\"0\",\"esp32/NbioT\",\"1\"";
+    at_command(aux_string.c_str(), 5000);
+    aux_string.clear();
+    aux_string = "AT+CMQPUB=\"0\",\"esp32/NbioT\",\"1\",\"0\",\"0\",\"8\",\"12345678\"";
+    at_command(aux_string.c_str(), 5000);
   }
 }
 
@@ -294,16 +351,4 @@ SIM7020::eNbiotStateMachine SIM7020::WaitSocketCloseHandler(){
     command_response.clear();
     return TCP_CLOSED;
     }
-}
-
-
-void SIM7020::set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd){
-  apn = user_apn;
-  user = username;
-  psswd = user_psswd;
-}
-
-
-void SIM7020::set_RFBand(std::string band){
-	rf_band = band;
 }
