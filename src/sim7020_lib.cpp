@@ -318,9 +318,7 @@ SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(){
     "Content-Type: application/json\r\n";
 
   if(app_layer_protocol.find("http") != std::string::npos){
-    aux_string = app_layer_method + " " + http_page + " " + http_version + "\r\n" + http_header + "\r\n"; //para get
-    //aux_string = app_layer_method + " " + http_page + " HTTP/1.1\r\nHost: " + (socket_host+"\r\n")  + test_header + "\r\n" + test_payload; //para post
-    //aux_string = method + " " + page + " HTTP/1.0\r\nHost: " + (socket_host+"\r\n") + "\r\n" + test_payload; //para post
+    aux_string = app_layer_method + " " + http_page + " " + http_version + "\r\n" + http_header + "\r\n" + data_payload;
     at_command("AT+CIPSEND", 10000);
     Serial_AT.write(aux_string.c_str());
     Serial_AT.write(26);

@@ -33,6 +33,7 @@ class SIM7020
   std::string http_page;
   std::string http_version;
   std::string http_header;
+  std::string data_payload;
   
   typedef enum NbiotStateMachineEnum{
     IP_INITIAL,
@@ -59,6 +60,8 @@ class SIM7020
       digitalWrite(pwr_pin, HIGH);
 	    rf_band = band; 	  
 	    eNextState = PDP_DEACT;
+
+      data_payload = ""; //default definition
 	}
 	
 	  void set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd);
