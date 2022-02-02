@@ -17,8 +17,6 @@ void setup() {
   nb_modem.set_HttpHeader("Host: www.cropnet.us\r\n");
 
   nb_modem.NbiotManager();
-
-  nb_modem.NbiotManager();
 }
 
 void loop() {
