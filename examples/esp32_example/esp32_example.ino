@@ -13,8 +13,6 @@ void setup() {
   nb_modem.HwInit();
 
   nb_modem.NbiotManager();
-
-  nb_modem.NbiotManager();
 }
 
 void loop() {
