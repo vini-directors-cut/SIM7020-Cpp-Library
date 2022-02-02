@@ -46,7 +46,6 @@ class SIM7020
   }eNbiotStateMachine;
   
   eNbiotStateMachine eNextState;
-  
   public:
     SIM7020(uint8_t rx_pin, uint8_t tx_pin, uint8_t pwr_pin, std::string band){
 	  Serial_AT.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin);
@@ -72,10 +71,11 @@ class SIM7020
     eNbiotStateMachine BringUpGprsHandler(void);
     eNbiotStateMachine WaitGprsHandler(void);
     eNbiotStateMachine GetLocalIpHandler(void);
-    eNbiotStateMachine SocketConnectHandler(std::string app_protocol, std::string host, std::string port);
+    eNbiotStateMachine SocketConnectHandler(std::string app_protocol,std::string host, std::string port);
     eNbiotStateMachine WaitSocketHandler(void);
-    eNbiotStateMachine DataSendHandler(std::string method, std::string page, std::string host);
+    eNbiotStateMachine DataSendHandler(std::string app_protocol,std::string app_method ,std::string host, std::string port);
     eNbiotStateMachine WaitSocketCloseHandler(void);
+    eNbiotStateMachine MQTT_Connection(void);
 };
 
 

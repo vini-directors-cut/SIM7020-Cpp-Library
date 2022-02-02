@@ -108,7 +108,7 @@ void SIM7020::NbiotManager(){
   socket_port = "80";
   http_page = "/print/origin.html";
   app_layer_method = "GET";
-  app_layer_protocol = "http";
+  app_layer_protocol = "mqtt"; //Choose between http and mqtt
   
   while(1){
     switch(eNextState){
@@ -133,15 +133,15 @@ void SIM7020::NbiotManager(){
         break;
 
       case IP_STATUS:
-        eNextState = SIM7020::SocketConnectHandler(app_layer_protocol, socket_host, socket_port);
+        eNextState = SIM7020::SocketConnectHandler(app_layer_protocol,socket_host, socket_port);
         break;        
 
       case TCP_CONNECTING:
-		eNextState = SIM7020::WaitSocketHandler();
+		    eNextState = SIM7020::WaitSocketHandler();
         break;
 
       case CONNECT_OK:
-        eNextState = SIM7020::DataSendHandler(app_layer_method, http_page, socket_host);
+        eNextState = SIM7020::DataSendHandler(app_layer_protocol, app_layer_method ,socket_host, socket_port);
         break;
 
       case TCP_CLOSING:
@@ -220,7 +220,7 @@ SIM7020::eNbiotStateMachine SIM7020::GetLocalIpHandler(){
 }
 
 
-SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(std::string app_protocol, std::string host, std::string port){
+SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(std::string app_protocol,std::string host, std::string port){
   std::string aux_string;
     if(app_layer_protocol.find("http") != std::string::npos){
     aux_string = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + port;
@@ -236,16 +236,27 @@ SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(std::string app_protoc
   }
 
   else if(app_layer_protocol.find("mqtt") != std::string::npos){
-    aux_string = "AT+CMQNEW=\"" + host + "\",\"" + port + "\",\"12000\",\"100\"";
-    at_command(aux_string.c_str(), 12000);
+    host = "broker.emqx.io";
+    std::string mqtt_port = "8883";
+    aux_string = "AT+CMQNEW=\"" + host + "\",\"" + mqtt_port + "\",\"9000\",\"100\"";
+    at_command(aux_string.c_str(), 9000);
     aux_string.clear();
 
     aux_string = "AT+CMQCON=\"0\",\"3\",\"myclient\",\"600\",\"0\", \"0\"";
     command_response = at_CommandWithReturn(aux_string.c_str(), 5000);
-    if((command_response.find("OK")) !=  std::string::npos){
-      command_response.clear();
-      return CONNECT_OK;
-    }
+    //if((command_response.find("OK")) !=  std::string::npos){
+    command_response.clear();
+
+    // aux_string = "AT+CMQSUB=\"0\",\"esp32/NbioT\",\"1\"";
+    // at_command(aux_string.c_str(), 5000);
+    // aux_string.clear();
+
+    // aux_string = "AT+CMQPUB=\"0\",\"esp32/NbioT\",\"1\",\"0\",\"0\",\"8\",\"12345678\"";
+    // at_command(aux_string.c_str(), 5000);
+    // aux_string.clear();
+
+    return CONNECT_OK;
+    //}
   }
 }
 
@@ -260,11 +271,12 @@ SIM7020::eNbiotStateMachine SIM7020::WaitSocketHandler(){
 }
 
 
-SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(std::string method, std::string page_file_topic, std::string host){
+SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(std::string app_protocol, std::string app_method, std::string page_file_topic, std::string host){
   std::string aux_string, cipsend_str, aux_command_before, aux_command_pub;
-  
-  if(app_layer_protocol.find("http") != std::string::npos){
-    aux_string = method + " " + page_file_topic + " HTTP/1.0\r\nHost: " + host + "\r\n\r\n";
+  at_command("AT+CIPSTATUS", 500);
+  if(app_protocol.find("http") != std::string::npos)
+  {
+    aux_string = app_method + " " + page_file_topic + " HTTP/1.0\r\nHost: " + host + "\r\n\r\n";
     at_command("AT+CIPSEND", 10000);
     Serial_AT.write(aux_string.c_str());
     Serial_AT.write(26);
@@ -272,18 +284,43 @@ SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(std::string method, std::st
     command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
     if((command_response.find("TCP CLOSED")) !=  std::string::npos)
       return TCP_CLOSED;
-    else if((command_response.find("CONNECT OK")) !=  std::string::npos){
+    else if((command_response.find("CONNECT OK")) !=  std::string::npos)
+    {
         at_command("AT+CIPCLOSE", 1000);
         return TCP_CLOSED;
-  }   
-
-  else if(app_layer_protocol.find("mqtt") != std::string::npos){
+   }  
+  }
+  else if(app_protocol.find("mqtt") != std::string::npos)
+  {
+    // std::string host = "broker.emqx.io";
+    // std::string mqtt_port = "8883";
+    // aux_string = "AT+CMQNEW=\"" + host + "\",\"" + mqtt_port + "\",\"9000\",\"100\"";
+    // at_command(aux_string.c_str(), 9000);
+    // aux_string.clear();
     aux_command_before = "AT+CMQSUB=\"0\",\"esp32/NbioT\",\"1\"";
     at_command(aux_command_before.c_str(), 5000);
     aux_command_pub = "AT+CMQPUB=\"0\",\"esp32/NbioT\",\"1\",\"0\",\"0\",\"8\",\"12345678\"";
     at_command(aux_command_pub.c_str(), 5000);
-    }
   }
+}
+
+SIM7020::eNbiotStateMachine SIM7020::MQTT_Connection()
+{
+  std::string aux_string, aux_command_request, aux_command_pub_test, aux_command_sub_test, host, port;
+  host = "broker.hivemq.com";
+  port = 1883;
+
+  aux_string = "AT+CMQNEW=\"" + host + "\",\"" + "1883" + "\",\"12000\",\"100\"";
+  at_command(aux_string.c_str(), 12000);
+
+  aux_command_request = "AT+CMQCON=\"0\",\"3\",\"my_id\",\"600\",\"0\", \"0\"";
+  at_command(aux_command_request.c_str(), 12000);
+
+  aux_command_sub_test = "AT+CMQSUB=\"0\",\"esp32/NbioT\",\"1\"";
+  at_command(aux_command_sub_test.c_str(), 5000);
+
+  aux_command_pub_test = "AT+CMQPUB=\"0\",\"esp32/NbioT\",\"1\",\"0\",\"0\",\"8\",\"12345678\"";
+  at_command(aux_command_pub_test.c_str(), 5000);
 }
 
 

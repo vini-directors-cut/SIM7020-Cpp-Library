@@ -1,6 +1,6 @@
 #include "sim7020_lib.h"
 
-SIM7020 nb_modem(26, 27, 12, "28"); //Rx, Tx, Power, RF band
+SIM7020 nb_modem(14, 13, 35, "28"); //Rx, Tx, Power, RF band
 
 void setup() {
   Serial.begin(115200);
