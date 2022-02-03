@@ -58,7 +58,7 @@ void SIM7020::HwInit(){
   command_response = at_CommandWithReturn("AT+CPIN?", 1000);
   while( (command_response.find("ERROR")) !=  std::string::npos){  
     digitalWrite(pwr, LOW);
-    delay(10000);
+    delay(5000);
     digitalWrite(pwr, HIGH);
     command_response = at_CommandWithReturn("AT+CPIN?", 1000);
   }
@@ -104,11 +104,6 @@ void SIM7020::HwInit(){
 
 
 void SIM7020::NbiotManager(){
-  socket_host = "www.cropnet.us";
-  socket_port = "80";
-  http_page = "/test/now";
-  app_layer_method = "GET";
-  app_layer_protocol = "http";
   
   while(1){
     switch(eNextState){
@@ -164,6 +159,19 @@ void SIM7020::set_NetworkCredentials(std::string user_apn, std::string username,
 }
 
 
+void SIM7020::set_Host(std::string app_protocol, std::string host, std::string port){
+  app_layer_protocol = app_protocol;
+  socket_host = host;
+  socket_port = port;
+}
+
+
+void SIM7020::set_HttpRequestOptions(std::string app_method, std::string page){
+  app_layer_method = app_method;
+  http_page = page;
+}
+
+
 void SIM7020::set_RFBand(std::string band){
 	rf_band = band;
 }
@@ -177,6 +185,7 @@ void SIM7020::set_HttpVersion(std::string version){
 void SIM7020::set_HttpHeader(std::string header){
   http_header = header;
 }
+
 
 
 SIM7020::eNbiotStateMachine SIM7020::NetworkAttachHandler(){
@@ -285,8 +294,7 @@ SIM7020::eNbiotStateMachine SIM7020::WaitSocketHandler(){
 SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(){
   std::string aux_string, cipsend_str;
 
-  std::string test_payload;
-  /*test_payload = 
+  data_payload = 
   "[\r\n"
   "  {\r\n"
   "    \"macAddress\": \"6e:22:81:c1:04:fd\",\r\n"
@@ -306,9 +314,7 @@ SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(){
   "    \"picVersion\": \"4.5.6\"\r\n"
   "  }\r\n"
   "]\r\n";
-  */
 
-  test_payload = "[{\"macAddress\":\"6e:22:81:c1:04:fd\",\"picDataList\":[{\"updated\":\"2022-02-01 15:59:59\",\"started\":\"2022-02-01 15:00:00\",\"atmosphericPressureSensor\":\"BME280\",\"finished\":\"2022-02-01 16:00:00\",\"rain\":0.2,\"created\":\"2022-02-01 15:00:26\",\"rain2\":0.4}],\"picName\":\"hdw2599\",\"pivotDataList\":[],\"picRebootHistoryList\":[],\"picVersion\":\"4.5.6\"}]";
 
   std::string test_header = "Accept: */*\r\n"
     "uptime: 2\r\n"
@@ -322,6 +328,7 @@ SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(){
     at_command("AT+CIPSEND", 10000);
     Serial_AT.write(aux_string.c_str());
     Serial_AT.write(26);
+    data_payload = "";
     at_command("AT+CIPCLOSE", 1000);
     command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
     if((command_response.find("TCP CLOSED")) !=  std::string::npos)

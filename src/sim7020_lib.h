@@ -66,9 +66,11 @@ class SIM7020
 	
 	  void set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd);
 	  void set_RFBand(std::string band);
+    void set_Json(std::string app_payload);
+    void set_Host(std::string app_protocol, std::string host, std::string port);
     void set_HttpVersion(std::string version);
     void set_HttpHeader(std::string header);
-    void set_Json(std::string app_payload);
+    void set_HttpRequestOptions(std::string app_method, std::string http_page);
   	
 	  void HwInit(void);
 	  void NbiotManager(void);
