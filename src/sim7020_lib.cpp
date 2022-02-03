@@ -56,7 +56,7 @@ void SIM7020::HwInit(){
   #endif
   
   command_response = at_CommandWithReturn("AT+CPIN?", 1000);
-  while( (command_response.find("ERROR")) !=  std::string::npos){  
+  while( (command_response.find("ERROR"||"CME ERROR")) !=  std::string::npos){  
     digitalWrite(pwr, LOW);
     delay(5000);
     digitalWrite(pwr, HIGH);
@@ -187,6 +187,16 @@ void SIM7020::set_HttpHeader(std::string header){
 }
 
 
+void SIM7020::set_MqttSubscriptionOptions(std::string topic, std::string qos){
+  mqtt_topic = topic;
+  mqtt_qos = qos;
+}
+
+
+void SIM7020::set_Payload(std::string payload){
+  data_payload = payload;
+}
+
 
 SIM7020::eNbiotStateMachine SIM7020::NetworkAttachHandler(){
   at_command("AT+CIPSHUT", 10000);
@@ -267,11 +277,11 @@ SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(){
   }
 
   else if(app_layer_protocol.find("mqtt") != std::string::npos){
-    aux_string = "AT+CMQNEW=\"" + socket_host + "\",\"" + socket_port + "\",\"12000\",\"100\"";
-    at_command(aux_string.c_str(), 12000);
+    aux_string = "AT+CMQNEW=\"" + socket_host + "\",\"" + socket_port + "\",\"5000\",\"256\"";
+    at_command(aux_string.c_str(), 5000);
     aux_string.clear();
 
-    aux_string = "AT+CMQCON=\"0\",\"3\",\"myclient\",\"600\",\"0\", \"0\"";
+    aux_string = "AT+CMQCON=\"0\"," + mqtt_version + ",\"myclient\",\"600\",\"0\", \"0\"";
     command_response = at_CommandWithReturn(aux_string.c_str(), 5000);
     if((command_response.find("OK")) !=  std::string::npos){
       command_response.clear();
@@ -294,41 +304,12 @@ SIM7020::eNbiotStateMachine SIM7020::WaitSocketHandler(){
 SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(){
   std::string aux_string, cipsend_str;
 
-  data_payload = 
-  "[\r\n"
-  "  {\r\n"
-  "    \"macAddress\": \"6e:22:81:c1:04:fd\",\r\n"
-  "    \"picDataList\": [\r\n"
-  "      {\r\n"
-  "        \"updated\": \"2021-12-01 15:59:50\",\r\n"
-  "        \"started\": \"2022-02-01 15:00:00\",\r\n"
-  "        \"finished\": \"2022-02-01 16:00:00\",\r\n"
-  "        \"rain\": 0.0,\r\n"
-  "        \"created\": \"2022-02-01 15:00:26\",\r\n"
-  "        \"rain2\": 0.4\r\n"
-  "      }\r\n"
-  "    ],\r\n"
-  "    \"picName\": \"hdw2599\",\r\n"
-  "    \"pivotDataList\": [],\r\n"
-  "    \"picRebootHistoryList\": [],\r\n"
-  "    \"picVersion\": \"4.5.6\"\r\n"
-  "  }\r\n"
-  "]\r\n";
-
-
-  std::string test_header = "Accept: */*\r\n"
-    "uptime: 2\r\n"
-    "MacAddress: 6e:22:81:c1:04:fd\r\n"
-    "PICName: hdw2599\r\n"
-    "PICVersion: 4.5.6\r\n"
-    "Content-Type: application/json\r\n";
-
   if(app_layer_protocol.find("http") != std::string::npos){
     aux_string = app_layer_method + " " + http_page + " " + http_version + "\r\n" + http_header + "\r\n" + data_payload;
-    at_command("AT+CIPSEND", 10000);
+    at_command("AT+CIPSEND", 15000);
     Serial_AT.write(aux_string.c_str());
     Serial_AT.write(26);
-    data_payload = "";
+    //data_payload = "";
     at_command("AT+CIPCLOSE", 1000);
     command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
     if((command_response.find("TCP CLOSED")) !=  std::string::npos)
@@ -337,14 +318,15 @@ SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(){
         at_command("AT+CIPCLOSE", 1000);
         return TCP_CLOSED;
     }
-  }   
+  }
 
   else if(app_layer_protocol.find("mqtt") != std::string::npos){
-    aux_string = "AT+CMQSUB=\"0\",\"esp32/NbioT\",\"1\"";
+    aux_string = "AT+CMQSUB=\"0\",\""+ mqtt_topic + "\",\"" + mqtt_qos +  "\"";
     at_command(aux_string.c_str(), 5000);
     aux_string.clear();
     aux_string = "AT+CMQPUB=\"0\",\"esp32/NbioT\",\"1\",\"0\",\"0\",\"8\",\"12345678\"";
     at_command(aux_string.c_str(), 5000);
+    return TCP_CLOSED;
   }
 }
 

@@ -34,6 +34,10 @@ class SIM7020
   std::string http_version;
   std::string http_header;
   std::string data_payload;
+  std::string mqtt_version;
+  std::string mqtt_id;
+  std::string mqtt_topic;
+  std::string mqtt_qos;
   
   typedef enum NbiotStateMachineEnum{
     IP_INITIAL,
@@ -61,7 +65,9 @@ class SIM7020
 	    rf_band = band; 	  
 	    eNextState = PDP_DEACT;
 
-      data_payload = ""; //default definition
+      data_payload = ""; //default definitions
+      http_version = "HTTP/1.1";
+      mqtt_version = "3";
 	}
 	
 	  void set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd);
@@ -71,6 +77,8 @@ class SIM7020
     void set_HttpVersion(std::string version);
     void set_HttpHeader(std::string header);
     void set_HttpRequestOptions(std::string app_method, std::string http_page);
+    void set_MqttSubscriptionOptions(std::string topic, std::string qos);
+    void set_Payload(std::string payload);
   	
 	  void HwInit(void);
 	  void NbiotManager(void);
