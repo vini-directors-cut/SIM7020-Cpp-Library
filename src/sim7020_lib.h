@@ -33,7 +33,7 @@ class SIM7020
   std::string http_page;
   std::string http_version;
   std::string http_header;
-  std::string data_payload;
+  std::string data_packet;
   std::string mqtt_version;
   std::string mqtt_id;
   std::string mqtt_topic;
@@ -65,7 +65,7 @@ class SIM7020
 	    rf_band = band; 	  
 	    eNextState = PDP_DEACT;
 
-      data_payload = ""; //default definitions
+      data_packet = ""; //default definitions
       http_version = "HTTP/1.1";
       mqtt_version = "3";
 	}
@@ -78,7 +78,7 @@ class SIM7020
     void set_HttpHeader(std::string header);
     void set_HttpRequestOptions(std::string app_method, std::string http_page);
     void set_MqttSubscriptionOptions(std::string topic, std::string qos);
-    void set_Payload(std::string payload);
+    void set_Packet(std::string packet);
   	
 	  void HwInit(void);
 	  void NbiotManager(void);

@@ -193,8 +193,8 @@ void SIM7020::set_MqttSubscriptionOptions(std::string topic, std::string qos){
 }
 
 
-void SIM7020::set_Payload(std::string payload){
-  data_payload = payload;
+void SIM7020::set_Packet(std::string packet){
+  data_packet = packet;
 }
 
 
@@ -304,12 +304,22 @@ SIM7020::eNbiotStateMachine SIM7020::WaitSocketHandler(){
 SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(){
   std::string aux_string, cipsend_str;
 
-  if(app_layer_protocol.find("http") != std::string::npos){
-    aux_string = app_layer_method + " " + http_page + " " + http_version + "\r\n" + http_header + "\r\n" + data_payload;
+  if(app_layer_protocol == "http"){
+    std::string a;
+    String d = (String) data_packet.size();
+    for(uint8_t char_byte = 0; char_byte < d.length(); char_byte++)
+      a.push_back(d[char_byte]);
+    http_header += "Content-Length: "; 
+    http_header += a.c_str();
+    http_header += "\r\n";
+    
+    Serial.print(http_header.c_str());
+    
+    aux_string = app_layer_method + " " + http_page + " " + http_version + "\r\n" + http_header + "\r\n" + data_packet;
     at_command("AT+CIPSEND", 15000);
     Serial_AT.write(aux_string.c_str());
     Serial_AT.write(26);
-    //data_payload = "";
+    data_packet = "";
     at_command("AT+CIPCLOSE", 1000);
     command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
     if((command_response.find("TCP CLOSED")) !=  std::string::npos)
@@ -320,7 +330,7 @@ SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(){
     }
   }
 
-  else if(app_layer_protocol.find("mqtt") != std::string::npos){
+  else if(app_layer_protocol == "mqtt"){
     aux_string = "AT+CMQSUB=\"0\",\""+ mqtt_topic + "\",\"" + mqtt_qos +  "\"";
     at_command(aux_string.c_str(), 5000);
     aux_string.clear();
