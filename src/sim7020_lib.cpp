@@ -79,7 +79,7 @@ void SIM7020::HwInit(){
   
   at_command("AT+COPS=0,0", 1000);
   at_command("AT+CGCONTRDP", 1000);
-
+  
   #ifdef DEBUG_MODE
   at_command("AT+CMEE=2",500);
   Serial.print("SIM7020 firmware version: ");
@@ -195,6 +195,20 @@ void SIM7020::set_MqttSubscriptionOptions(std::string topic, std::string qos){
 
 void SIM7020::set_Packet(std::string packet){
   data_packet = packet;
+}
+
+
+void SIM7020::set_SleepPin(uint8_t dtr_pin){
+  dtr = dtr_pin;
+  pinMode(dtr_pin, OUTPUT);
+  digitalWrite(dtr_pin, LOW);
+  at_command("AT+CSCLK=1", 1000);
+}
+
+
+void SIM7020::Sleep(void){
+  digitalWrite(dtr, HIGH);
+  delay(1000);
 }
 
 

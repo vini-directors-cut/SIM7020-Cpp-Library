@@ -10,7 +10,7 @@
 #define DEBUG_MODE
 #define Serial_AT  Serial1
 #define UART_BAUD  115200
-#define PIN_DTR    25
+
 
 void at_command(String command, uint32_t timeout);
 std::string at_CommandWithReturn(String command, uint16_t timeout);
@@ -19,6 +19,7 @@ class SIM7020
 {
   private:
   uint8_t pwr;
+  uint8_t dtr;
   
   std::string rf_band;
   std::string apn;
@@ -62,7 +63,7 @@ class SIM7020
 	    pwr = pwr_pin;
       pinMode(pwr_pin, OUTPUT);
       digitalWrite(pwr_pin, HIGH);
-	    rf_band = band; 	  
+	    rf_band = band;
 	    eNextState = PDP_DEACT;
 
       data_packet = ""; //default definitions
@@ -79,9 +80,11 @@ class SIM7020
     void set_HttpRequestOptions(std::string app_method, std::string http_page);
     void set_MqttSubscriptionOptions(std::string topic, std::string qos);
     void set_Packet(std::string packet);
+    void set_SleepPin(uint8_t dtr_pin);
   	
 	  void HwInit(void);
 	  void NbiotManager(void);
+    void Sleep(void);
 	
     eNbiotStateMachine NetworkAttachHandler(void);
     eNbiotStateMachine StartTaskHandler(void);

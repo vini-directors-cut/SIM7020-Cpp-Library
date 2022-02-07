@@ -8,10 +8,10 @@ void setup() {
   delay(100);
     
   Serial.println("\nWait...");
-
+  nb_modem.set_SleepPin(15);
   nb_modem.set_NetworkCredentials("virtueyes.com.br","virtu","virtu");
   nb_modem.HwInit();
-  
+    
   nb_modem.set_Host("http", "www.cropnet.us", "80");
   nb_modem.set_HttpRequestOptions("POST", "/pic/gateway/data");
   nb_modem.set_HttpVersion("HTTP/1.1");
@@ -30,6 +30,7 @@ void setup() {
   "Version\":\"4.5.6\",\"uptime\":2}]");
   
   nb_modem.NbiotManager(); //state machine
+  nb_modem.Sleep();
 }
 
 void loop() {
