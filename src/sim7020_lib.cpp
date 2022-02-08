@@ -145,6 +145,7 @@ void SIM7020::NbiotManager(){
 
       case TCP_CLOSED:
       Serial.println("Estado ainda n implementado - flag");
+      at_command("AT+CSCLK=1", 1000);
 	    return;
         break;
     }
@@ -206,13 +207,17 @@ void SIM7020::set_SleepPin(uint8_t dtr_pin){
 }
 
 
-void SIM7020::Sleep(void){
-  digitalWrite(dtr, HIGH);
+void SIM7020::Sleep(bool will_sleep){
+  if(will_sleep)
+    digitalWrite(dtr, HIGH);
+  else
+    digitalWrite(dtr, LOW);
   delay(1000);
 }
 
 
 SIM7020::eNbiotStateMachine SIM7020::NetworkAttachHandler(){
+  at_command("AT+CSCLK=0", 1000);
   at_command("AT+CIPSHUT", 10000);
   at_command("AT+CIPMUX=0", 1000);
 
