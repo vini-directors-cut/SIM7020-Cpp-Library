@@ -76,6 +76,8 @@ class SIM7020
     eNbiotStateMachine DataSendHandler(std::string app_protocol,std::string app_method ,std::string host, std::string port);
     eNbiotStateMachine WaitSocketCloseHandler(void);
     eNbiotStateMachine MQTT_Connection(void);
+    eNbiotStateMachine Config_TLS(void);
+    eNbiotStateMachine SSL_Connection(void);
 };
 
 

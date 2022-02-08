@@ -141,7 +141,8 @@ void SIM7020::NbiotManager(){
         break;
 
       case CONNECT_OK:
-        eNextState = SIM7020::DataSendHandler(app_layer_protocol, app_layer_method ,socket_host, socket_port);
+        //eNextState = SIM7020::DataSendHandler(app_layer_protocol, app_layer_method ,socket_host, socket_port);
+        eNextState = SIM7020::SSL_Connection();
         break;
 
       case TCP_CLOSING:
@@ -236,14 +237,15 @@ SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(std::string app_protoc
   }
 
   else if(app_layer_protocol.find("mqtt") != std::string::npos){
-    host = "broker.emqx.io";
-    std::string mqtt_port = "8883";
-    aux_string = "AT+CMQNEW=\"" + host + "\",\"" + mqtt_port + "\",\"9000\",\"100\"";
-    at_command(aux_string.c_str(), 9000);
-    aux_string.clear();
+    std::string host = "broker.emqx.io";
+    std::string mqtt_port = "1883";
+    // aux_string = "AT+CMQNEW=\"" + host + "\",\"" + mqtt_port + "\",\"9000\",\"100\"";
+    // at_command(aux_string.c_str(), 9000);
+    // aux_string.clear();
 
-    aux_string = "AT+CMQCON=\"0\",\"3\",\"myclient\",\"600\",\"0\", \"0\"";
-    command_response = at_CommandWithReturn(aux_string.c_str(), 5000);
+    // aux_string = "AT+CMQCON=\"0\",\"3\",\"myclient\",\"600\",\"0\", \"0\"";
+    // command_response = at_CommandWithReturn(aux_string.c_str(), 5000);
+    
     //if((command_response.find("OK")) !=  std::string::npos){
     command_response.clear();
 
@@ -258,6 +260,91 @@ SIM7020::eNbiotStateMachine SIM7020::SocketConnectHandler(std::string app_protoc
     return CONNECT_OK;
     //}
   }
+}
+
+SIM7020::eNbiotStateMachine SIM7020::Config_TLS()
+{
+  std::string aux_string, host, port, serve_ca, serve_ca2, client_ca,aux_string_client, private_key,mqtt_port;
+
+  at_command("AT+CMQTTSNEW?", 500);
+  host = "broker.emqx.io";
+  port = "1883";
+
+  if(command_response.find("null") == std::string::npos)
+  {
+    aux_string = "AT+CMQNEW=\"" + host + "\",\"" + port + "\",\"9000\",\"100\"";
+    at_command(aux_string.c_str(), 9000);
+    aux_string.clear();
+  }
+
+  
+  host = "mqtt.googleapis.com";
+  mqtt_port = "8883";
+  //OPC A
+  serve_ca = "-----BEGIN CERTIFICATE-----MIIB4TCCAYegAwIBAgIRKjikHJYKBN5CsiilC+g0mAIwCgYIKoZIzj0EAwIwUDEkMCIGA1UECxMbR2xvYmFsU2lnbiBFQ0MgUm9vdCBDQSAtIFI0MRMwEQYDVQQKEwpHbG9iYWxTaWduMRMwEQYDVQQDEwpHbG9iYWxTaWduMB4XDTEyMTExMzAwMDAwMFoXDTM4MDExOTAzMTQwN1owUDEkMCIGA1UECxMbR2xvYmFsU2lnbiBFQ0MgUm9vdCBDQSAtIFI0MRMwEQYDVQQKEwpHbG9iYWxTaWduMRMwEQYDVQQDEwpHbG9iYWxTaWduMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuMZ5049sJQ6fLjkZHAOkrprlOQcJFspjsbmG+IpXwVfOQvpzofdlQv8ewQCybnMO/8ch5RikqtlxP6jUuc6MHaNCMEAwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFFSwe61FuOJAf/sKbvu+M8k8o4TVMAoGCCqGSM49BAMCA0gAMEUCIQDckqGgE6bPA7DmxCGXkPoUVy0D7O48027KqGx2vKLeuwIgJ6iFJzWbVsaj8kfSt24bAgAXqmemFZHe+pTsewv4n4Q=-----END CERTIFICATE-----";
+  //OPC B
+  //serve_ca = "-----BEGIN CERTIFICATE-----MIIB3DCCAYOgAwIBAgINAgPlfvU/k/2lCSGypjAKBggqhkjOPQQDAjBQMSQwIgYDVQQLExtHbG9iYWxTaWduIEVDQyBSb290IENBIC0gUjQxEzARBgNVBAoTCkdsb2JhbFNpZ24xEzARBgNVBAMTCkdsb2JhbFNpZ24wHhcNMTIxMTEzMDAwMDAwWhcNMzgwMTE5MDMxNDA3WjBQMSQwIgYDVQQLExtHbG9iYWxTaWduIEVDQyBSb290IENBIC0gUjQxEzARBgNVBAoTCkdsb2JhbFNpZ24xEzARBgNVBAMTCkdsb2JhbFNpZ24wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS4xnnTj2wlDp8uORkcA6SumuU5BwkWymOxuYb4ilfBV85C+nOh92VC/x7BALJucw7/xyHlGKSq2XE/qNS5zowdo0IwQDAOBgNVHQ8BAf8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUVLB7rUW44kB/+wpu+74zyTyjhNUwCgYIKoZIzj0EAwIDRwAwRAIgIk90crlgr/HmnKAWBVBfw147bmF0774BxL4YSFlhgjICICadVGNA3jdgUM/I2O2dgq43mLyjj0xMqTQrbO/7lZsm-----END CERTIFICATE-----";
+  //serve_ca =   "-----BEGIN CERTIFICATE-----MIIC0TCCAnagAwIBAgINAfQKmcm3qFVwT0+3nTAKBggqhkjOPQQDAjBEMQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExMQzERMA8GA1UEAxMIR1RTIExUU1IwHhcNMTkwMTIzMDAwMDQyWhcNMjkwNDAxMDAwMDQyWjBEMQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExMQzERMA8GA1UEAxMIR1RTIExUU1gwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARr6/PTsGoOg9fXhJkj3CAk6C6DxHPnZ1I+ER40vEe290xgTp0gVplokojbN3pFx07fzYGYAX5EK7gDQYuhpQGIo4IBSzCCAUcwDgYDVR0PAQH/BAQDAgGGMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1UdDgQWBBSzK6ugSBx+E4rJCMRAQiKiNlHiCjAfBgNVHSMEGDAWgBQ+/v/MUuu/ND4980DQ5CWxX7i7UjBpBggrBgEFBQcBAQRdMFswKAYIKwYBBQUHMAGGHGh0dHA6Ly9v";
+  //serve_ca2 = "Y3NwLnBraS5nb29nL2d0c2x0c3IwLwYIKwYBBQUHMAKGI2h0dHA6Ly9wa2kuZ29vZy9ndHNsdHNyL2d0c2x0c3IuY3J0MDgGA1UdHwQxMC8wLaAroCmGJ2h0dHA6Ly9jcmwucGtpLmdvb2cvZ3RzbHRzci9ndHNsdHNyLmNybDAdBgNVHSAEFjAUMAgGBmeBDAECATAIBgZngQwBAgIwCgYIKoZIzj0EAwIDSQAwRgIhAPWeg2v4yeimG+lzmZACDJOlalpsiwJR0VOeapY8/7aQAiEAiwRsSQXUmfVUW+N643GgvuMH70o2Agz8w67fSX+k+Lc=-----END CERTIFICATE-----";
+  aux_string.clear();
+  
+
+
+
+  //LIMPAR E ESCREVE O SERVE_CA
+  aux_string = "AT+CSETCA=\"0\",\"0\",\"0\",\"0\",\"0\"";
+  at_command(aux_string.c_str(), 500);
+  aux_string.clear();
+
+  aux_string = "AT+CSETCA=\"0\",\"702\",\"0\",\"0\",\"" + serve_ca + "\"";
+  at_command(aux_string.c_str(), 500);
+  aux_string.clear();
+
+  
+  //LIMPAR E ESCREVE O CLIENT_CA
+  aux_string = "AT+CSETCA=\"1\",\"0\",\"0\",\"0\",\"0\"";
+  at_command(aux_string.c_str(), 500);
+  aux_string.clear();
+  client_ca = "-----BEGIN PUBLIC KEY-----MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEQOVGC+fbMK45MCJscsIknKvV21bzNRCvP12Sf204pxhuf+iqa8zMuPFgPCb7d+bNd82uUlDMnvZYlKkrItXSiw==-----END PUBLIC KEY-----";
+  aux_string_client = "AT+CSETCA=\"1\",\"176\",\"0\",\"0\",\"" + client_ca + "\"";
+  at_command(aux_string_client.c_str(), 500);
+  aux_string_client.clear();
+
+  //LIMPAR E ESCREVE O PRIVATE_KEY
+  aux_string = "AT+CSETCA=\"2\",\"0\",\"0\",\"0\",\"0\"";
+  at_command(aux_string.c_str(), 500);
+  aux_string.clear();
+  private_key = "-----BEGIN EC PRIVATE KEY-----MHcCAQEEIEf7pG64E9BqMylniTrkm84zmCfO885apmpLHb5dybHmoAoGCCqGSM49AwEHoUQDQgAEQOVGC+fbMK45MCJscsIknKvV21bzNRCvP12Sf204pxhuf+iqa8zMuPFgPCb7d+bNd82uUlDMnvZYlKkrItXSiw==-----END EC PRIVATE KEY-----";
+  aux_string = "AT+CSETCA=\"2\",\"224\",\"0\",\"0\",\"" + private_key + "\"";
+  at_command(aux_string.c_str(), 500);
+  aux_string.clear();
+
+  at_command("AT+CMQTTSNEW?", 500);
+  at_command("AT+CMQCON=?", 500);
+
+
+
+
+  // aux_string = "AT+CMQNEW=\"0\",\"0\",\"9000\",\"100\"";
+  // at_command(aux_string.c_str(), 500);
+  // aux_string.clear();
+  aux_string = "AT+CMQNEW=\"" + host + "\",\"" + mqtt_port + "\",\"9000\",\"100\"";
+  at_command(aux_string.c_str(), 9000);
+    at_command("AT+CMQTTSNEW?", 500);
+  // aux_string.clear();
+
+  // at_command("AT+CMQNEW?", 500);
+
+  aux_string = "AT+CMQCON=\"0\",\"3\",\"projects/iot-test-328120/locations/us-central1/registries/test-registry/devices/nb_iot\",\"600\",\"0\", \"0\"";
+  at_command(aux_string.c_str(), 5000);
+  aux_string.clear();
+  
+  at_command("AT+CMQCON=?", 500);
+  // aux_string.clear();
+  // aux_string = "AT+CMQTTSNEW=\"" + host + "\",\"" + port + "\",\"9000\",\"100\"";
+  // at_command(aux_string.c_str(), 9000);
+  // aux_string.clear();
+
 }
 
 
@@ -323,6 +410,76 @@ SIM7020::eNbiotStateMachine SIM7020::MQTT_Connection()
   at_command(aux_command_pub_test.c_str(), 5000);
 }
 
+SIM7020::eNbiotStateMachine SIM7020::SSL_Connection()
+{
+  std::string aux_string, root_ca, root_ca_b, root_total, serve_ca, private_key, broker, port;
+
+  broker = "mqtt.2030.ltsapis.goog";
+  port = "8883";
+
+  at_command("AT+CSETCA?", 500);
+
+  serve_ca = "-----BEGIN CERTIFICATE-----MIIB4TCCAYegAwIBAgIRKjikHJYKBN5CsiilC+g0mAIwCgYIKoZIzj0EAwIwUDEkMCIGA1UECxMbR2xvYmFsU2lnbiBFQ0MgUm9vdCBDQSAtIFI0MRMwEQYDVQQKEwpHbG9iYWxTaWduMRMwEQYDVQQDEwpHbG9iYWxTaWduMB4XDTEyMTExMzAwMDAwMFoXDTM4MDExOTAzMTQwN1owUDEkMCIGA1UECxMbR2xvYmFsU2lnbiBFQ0MgUm9vdCBDQSAtIFI0MRMwEQYDVQQKEwpHbG9iYWxTaWduMRMwEQYDVQQDEwpHbG9iYWxTaWduMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuMZ5049sJQ6fLjkZHAOkrprlOQcJFspjsbmG+IpXwVfOQvpzofdlQv8ewQCybnMO/8ch5RikqtlxP6jUuc6MHaNCMEAwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFFSwe61FuOJAf/sKbvu+M8k8o4TVMAoGCCqGSM49BAMCA0gAMEUCIQDckqGgE6bPA7DmxCGXkPoUVy0D7O48027KqGx2vKLeuwIgJ6iFJzWbVsaj8kfSt24bAgAXqmemFZHe+pTsewv4n4Q=-----END CERTIFICATE-----";
+
+  aux_string = "AT+CSETCA=\"0\",\"0\",\"0\",\"0\",\"0\"";
+  at_command(aux_string.c_str(), 500);
+  aux_string.clear();
+
+  aux_string = "AT+CSETCA=\"2\",\"0\",\"0\",\"0\",\"0\"";
+  at_command(aux_string.c_str(), 500);
+  aux_string.clear();
+
+  at_command("AT+CSETCA?", 500);
+
+  root_ca = "-----BEGIN CERTIFICATE-----MIIC0TCCAnagAwIBAgINAfQKmcm3qFVwT0+3nTAKBggqhkjOPQQDAjBEMQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExMQzERMA8GA1UEAxMIR1RTIExUU1IwHhcNMTkwMTIzMDAwMDQyWhcNMjkwNDAxMDAwMDQyWjBEMQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExMQzERMA8GA1UEAxMIR1RTIExUU1gwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARr6/PTsGoOg9fXhJkj3CAk6C6DxHPnZ1I+ER40vEe290xgTp0gVplokojbN3pFx07fzYGYAX5EK7gDQYuhpQGIo4IBSzCCAUcwDgYDVR0PAQH/BAQDAgGGMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1UdDgQWBBSzK6ugSBx+E4rJCMRAQiKiNlHiCjAfBgNVHSMEGDAWgBQ+/v/MUuu/ND4980DQ5CWxX7i7UjBpBggrBgEFBQcBAQRdMFswKAYIKwYBBQUHMAGGHGh0dHA6Ly9vY3NwLnBraS5nb29nL2d0c2x0c3IwLwYIKwYBBQUHMAKGI2h0dHA6Ly9wa2kuZ29vZy9ndHNsdHNyL2d0c2x0c3IuY3J0MDgGA1UdHwQxMC8wLaAroCmGJ2h0dHA6Ly9jcmwucGtpLmdvb2cvZ3RzbHRzc";
+  
+  root_ca_b = "i9ndHNsdHNyLmNybDAdBgNVHSAEFjAUMAgGBmeBDAECATAIBgZngQwBAgIwCgYIKoZIzj0EAwIDSQAwRgIhAPWeg2v4yeimG+lzmZACDJOlalpsiwJR0VOeapY8/7aQAiEAiwRsSQXUmfVUW+N643GgvuMH70o2Agz8w67fSX+k+Lc=-----END CERTIFICATE-----";
+
+  private_key = "-----BEGIN EC PRIVATE KEY-----MHcCAQEEIEf7pG64E9BqMylniTrkm84zmCfO885apmpLHb5dybHmoAoGCCqGSM49AwEHoUQDQgAEQOVGC+fbMK45MCJscsIknKvV21bzNRCvP12Sf204pxhuf+iqa8zMuPFgPCb7d+bNd82uUlDMnvZYlKkrItXSiw==-----END EC PRIVATE KEY-----";
+
+
+
+  aux_string = "AT+CSETCA=\"0\",\"1024\",\"0\",\"0\",\"" + root_ca + "\"";
+  at_command(aux_string.c_str(), 500);
+  aux_string.clear();
+
+  aux_string = "AT+CSETCA=\"0\",\"1024\",\"1\",\"0\",\"" + root_ca_b + "\"";
+  at_command(aux_string.c_str(), 500);
+  aux_string.clear();
+
+  aux_string = "AT+CSETCA=\"2\",\"224\",\"1\",\"0\",\"" + private_key + "\"";
+  at_command(aux_string.c_str(), 500);
+  aux_string.clear();
+
+  at_command("AT+CMQTTSNEW=?", 500);
+  at_command("AT+CMQTTSNEW?", 500);
+
+  aux_string = "AT+CMQNEW=\"" + broker + "\",\"" + port + "\",\"12000\",\"1024\"";
+  at_command(aux_string.c_str(), 2000);
+  aux_string.clear();
+
+  at_command("AT+CMQTTSNEW?", 500);
+
+  aux_string = "AT+CMQCON=\"0\",\"4\",\"projects/iot-test-328120/locations/us-central1/registries/test-registry/devices/nb_iot\",\"60000\",\"1\",\"0\"";
+  at_command(aux_string.c_str(), 2000);
+  at_command("AT+CMQCON?", 500);
+  aux_string.clear();
+
+  at_command("AT+CMQCON=?", 500);
+
+
+  aux_string = "AT+CMQSUB=\"0\",\"projects/iot-test-328120/subscriptions/testesub-sub\",\"0\"";
+  at_command(aux_string.c_str(), 2000);
+  aux_string.clear();
+  
+  at_command("AT+CMQSUB?", 500);
+
+  aux_string = "AT+CMQDISCON=\"0\"";
+  at_command(aux_string.c_str(), 2000);
+  aux_string.clear();
+
+  return TCP_CLOSED;
+}
 
 SIM7020::eNbiotStateMachine SIM7020::WaitSocketCloseHandler(){
   delay(5000);
