@@ -490,6 +490,13 @@ SIM7020::eNbiotStateMachine SIM7020::WaitSocketCloseHandler(){
     }
 }
 
+void SIM7020::set_SleepPin(uint8_t dtr_pin){
+  dtr = dtr_pin;
+  pinMode(dtr_pin, OUTPUT);
+  digitalWrite(dtr_pin, LOW);
+  at_command("AT+CSCLK=1", 1000);
+}
+
 
 void SIM7020::set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd){
   apn = user_apn;
