@@ -11,11 +11,8 @@ void setup() {
   nb_modem.set_SleepPin(15);
   nb_modem.set_NetworkCredentials("virtueyes.com.br","virtu","virtu");
   nb_modem.HwInit();
-<<<<<<< HEAD
+
   //nb_modem.set_SleepPin(15);
-=======
-  
->>>>>>> 04fe36c08c5dc41ef9ee7a78f7e92536b59979c6
   
   nb_modem.set_Host("mqtt", "broker.emqx.io" ,"1883");
   nb_modem.set_MqttSubscriptionOptions("esp32/Nbiot","0");
