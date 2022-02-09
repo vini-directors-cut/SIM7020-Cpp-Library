@@ -71,8 +71,8 @@ class SIM7020
       mqtt_version = "3";
 	}
 	
-	  void set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd);
-	  void set_RFBand(std::string band);
+    void set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd);
+    void set_RFBand(std::string band);
     void set_Json(std::string app_payload);
     void set_Host(std::string app_protocol, std::string host, std::string port);
     void set_HttpVersion(std::string version);
@@ -84,7 +84,7 @@ class SIM7020
   	
 	  void HwInit(void);
 	  void NbiotManager(void);
-    void Sleep(void);
+    void Sleep(bool will_sleep);
 	
     eNbiotStateMachine NetworkAttachHandler(void);
     eNbiotStateMachine StartTaskHandler(void);

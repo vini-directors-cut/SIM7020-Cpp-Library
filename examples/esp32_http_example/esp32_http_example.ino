@@ -8,9 +8,10 @@ void setup() {
   delay(100);
     
   Serial.println("\nWait...");
-  nb_modem.set_SleepPin(15);
+
   nb_modem.set_NetworkCredentials("virtueyes.com.br","virtu","virtu");
   nb_modem.HwInit();
+  nb_modem.set_SleepPin(15);
     
   nb_modem.set_Host("http", "www.cropnet.us", "80");
   nb_modem.set_HttpRequestOptions("POST", "/pic/gateway/data");
@@ -30,7 +31,13 @@ void setup() {
   "Version\":\"4.5.6\",\"uptime\":2}]");
   
   nb_modem.NbiotManager(); //state machine
-  nb_modem.Sleep();
+  nb_modem.Sleep(true);
+
+  Serial.println("SIM7020 entered in sleep mode ZzZzZzZzZZZz...");
+  delay(20000);
+
+  Serial.println("Exiting the sleep mode");
+  nb_modem.Sleep(false);
 }
 
 void loop() {
