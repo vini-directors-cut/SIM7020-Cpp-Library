@@ -13,7 +13,7 @@ void setup() {
   nb_modem.HwInit();
   
   
-  nb_modem.set_Host("mqtt", "broker.emqx.io" ,"1883");
+  nb_modem.set_Host("mqtt-ssl", "mqtt.2030.ltsapis.goog" ,"8883");
   nb_modem.set_MqttSubscriptionOptions("esp32/Nbiot","0");
   nb_modem.NbiotManager();
 }

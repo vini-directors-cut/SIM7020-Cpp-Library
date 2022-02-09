@@ -95,6 +95,7 @@ class SIM7020
     eNbiotStateMachine WaitSocketHandler(void);
     eNbiotStateMachine DataSendHandler(void);
     eNbiotStateMachine WaitSocketCloseHandler(void);
+    eNbiotStateMachine SSL_ConnectHandler(void);
 };
 
 
