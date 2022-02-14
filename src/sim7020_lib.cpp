@@ -55,13 +55,13 @@ void SIM7020::HwInit(){
   at_command("ATE0", 500);
   #endif
   
-  command_response = at_CommandWithReturn("AT+CPIN?", 1000);
-  while( (command_response.find("ERROR"||"CME ERROR")) !=  std::string::npos){  
-    digitalWrite(pwr, LOW);
-    delay(5000);
-    digitalWrite(pwr, HIGH);
+
+  do{
     command_response = at_CommandWithReturn("AT+CPIN?", 1000);
-  }
+    //digitalWrite(pwr, LOW);
+    delay(2000);
+    //digitalWrite(pwr, HIGH);
+  } while( (command_response.find("ERROR")) !=  std::string::npos );
 
   command_response.clear();
 
@@ -79,6 +79,7 @@ void SIM7020::HwInit(){
   
   at_command("AT+COPS=0,0", 1000);
   at_command("AT+CGCONTRDP", 1000);
+  at_command("AT+RETENTION", 1000);
   
   #ifdef DEBUG_MODE
   at_command("AT+CMEE=2",500);
@@ -104,7 +105,7 @@ void SIM7020::HwInit(){
 
 
 void SIM7020::NbiotManager(){
-  
+  SIM7020::PowerSaveMode(false);
   while(1){
     switch(eNextState){
       case PDP_DEACT:
@@ -145,7 +146,6 @@ void SIM7020::NbiotManager(){
 
       case TCP_CLOSED:
       Serial.println("Estado ainda n implementado - flag");
-      //at_command("AT+CSCLK=1", 1000);
 	    return;
         break;
     }
@@ -198,26 +198,18 @@ void SIM7020::set_Packet(std::string packet){
   data_packet = packet;
 }
 
-/*
-void SIM7020::set_SleepPin(uint8_t dtr_pin){
-  dtr = dtr_pin;
-  pinMode(dtr_pin, OUTPUT);
-  digitalWrite(dtr_pin, LOW);
-  at_command("AT+CSCLK=1", 1000);
-}
 
 
-void SIM7020::Sleep(bool will_sleep){
+void SIM7020::PowerSaveMode(bool will_sleep){
   if(will_sleep)
-    digitalWrite(dtr, HIGH);
+    at_command("AT+CPSMS=1", 1000);
   else
-    digitalWrite(dtr, LOW);
+    at_command("AT+CPSMS=0", 1000);
   delay(1000);
 }
-*/
+
 
 SIM7020::eNbiotStateMachine SIM7020::NetworkAttachHandler(){
-  //at_command("AT+CSCLK=0", 1000);
   at_command("AT+CIPSHUT", 10000);
   at_command("AT+CIPMUX=0", 1000);
 

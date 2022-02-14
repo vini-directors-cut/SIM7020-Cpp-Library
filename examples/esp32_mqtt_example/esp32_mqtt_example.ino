@@ -8,7 +8,7 @@ void setup() {
   delay(100);
     
   Serial.println("\nWait...");
-  nb_modem.set_SleepPin(15);
+//  nb_modem.set_SleepPin(15);
   nb_modem.set_NetworkCredentials("virtueyes.com.br","virtu","virtu");
   nb_modem.HwInit();
 
