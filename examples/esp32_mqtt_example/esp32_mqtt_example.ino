@@ -8,13 +8,16 @@ void setup() {
   delay(100);
     
   Serial.println("\nWait...");
+<<<<<<< HEAD
 //  nb_modem.set_SleepPin(15);
+=======
+>>>>>>> a0cdf0656738e46f0db9c1045832dd1873ca3321
   nb_modem.set_NetworkCredentials("virtueyes.com.br","virtu","virtu");
   nb_modem.HwInit();
 
   //nb_modem.set_SleepPin(15);
   
-  nb_modem.set_Host("mqtt", "broker.emqx.io" ,"1883");
+  nb_modem.set_Host("mqtt", "a3e1a29a.us-east-1.emqx.cloud" ,"15539");
   nb_modem.set_MqttSubscriptionOptions("esp32/Nbiot","0");
   nb_modem.NbiotManager();
 }

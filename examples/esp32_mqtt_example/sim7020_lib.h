@@ -80,11 +80,11 @@ class SIM7020
     void set_HttpRequestOptions(std::string app_method, std::string http_page);
     void set_MqttSubscriptionOptions(std::string topic, std::string qos);
     void set_Packet(std::string packet);
-    void set_SleepPin(uint8_t dtr_pin);
+    //void set_SleepPin(uint8_t dtr_pin);
   	
 	  void HwInit(void);
 	  void NbiotManager(void);
-    void Sleep(bool will_sleep);
+    //void Sleep(bool will_sleep);
 	
     eNbiotStateMachine NetworkAttachHandler(void);
     eNbiotStateMachine StartTaskHandler(void);
