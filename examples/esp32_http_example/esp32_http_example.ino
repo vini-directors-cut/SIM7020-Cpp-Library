@@ -8,6 +8,12 @@ void setup() {
   delay(100);
     
   Serial.println("\nWait...");
+  
+  delay(20000);
+  nb_modem.PowerSaveMode(true);
+  Serial.println("SIM7020 entered in sleep mode ZzZzZzZzZZZz...");
+  delay(20000);
+  nb_modem.PowerSaveMode(false);
 
   nb_modem.set_NetworkCredentials("virtueyes.com.br","virtu","virtu");
   nb_modem.HwInit();

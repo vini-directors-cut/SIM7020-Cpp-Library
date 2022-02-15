@@ -201,8 +201,10 @@ void SIM7020::set_Packet(std::string packet){
 
 
 void SIM7020::PowerSaveMode(bool will_sleep){
+  at_command("AT+IPR=115200", 1000);
+  at_command("AT+CPSMSTATUS=1", 500);
   if(will_sleep)
-    at_command("AT+CPSMS=1", 1000);
+    at_command("AT+CPSMS=1,,,\"01000111\",\"00000001\"", 60000);
   else
     at_command("AT+CPSMS=0", 1000);
   delay(1000);
