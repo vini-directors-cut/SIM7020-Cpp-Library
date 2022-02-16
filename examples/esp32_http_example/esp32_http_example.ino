@@ -1,19 +1,13 @@
 #include <string>
 #include "sim7020_lib.h"
 
-SIM7020 nb_modem(14, 13, 25, "28"); //Rx, Tx, Power, RF band
+SIM7020 nb_modem(26, 27, 4, "28"); //Rx, Tx, Power, RF band
 
 void setup() {
   Serial.begin(115200);
   delay(100);
     
   Serial.println("\nWait...");
-  
-  delay(20000);
-  nb_modem.PowerSaveMode(true);
-  Serial.println("SIM7020 entered in sleep mode ZzZzZzZzZZZz...");
-  delay(20000);
-  nb_modem.PowerSaveMode(false);
 
   nb_modem.set_NetworkCredentials("virtueyes.com.br","virtu","virtu");
   nb_modem.HwInit();
