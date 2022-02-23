@@ -43,6 +43,24 @@ void at_command(String command, uint32_t timeout) {
 }
 
 
+SIM7020::SIM7020(uint8_t rx_pin, uint8_t tx_pin, uint8_t pwr_pin, std::string band){
+	  Serial_AT.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin);
+      delay(100);
+	  
+	    pwr = pwr_pin;
+      pinMode(pwr_pin, OUTPUT);
+      digitalWrite(pwr_pin, LOW);
+      delay(1200);
+      digitalWrite(pwr_pin, HIGH);      
+	    rf_band = band;
+	    eNextState = PDP_DEACT;
+
+      data_packet = ""; //default definitions
+      http_version = "HTTP/1.1";
+      mqtt_version = "3";
+}
+
+
 void SIM7020::HwInit(){
   std::string aux_string;
 
@@ -79,7 +97,7 @@ void SIM7020::HwInit(){
   
   at_command("AT+COPS=0,0", 1000);
   at_command("AT+CGCONTRDP", 1000);
-  at_command("AT+RETENTION", 1000);
+  at_command("AT+RETENTION=1", 1000);
   
   #ifdef DEBUG_MODE
   at_command("AT+CMEE=2",500);
@@ -133,7 +151,7 @@ void SIM7020::NbiotManager(){
         break;        
 
       case TCP_CONNECTING:
-		eNextState = SIM7020::WaitSocketHandler();
+		    eNextState = SIM7020::WaitSocketHandler();
         break;
 
       case CONNECT_OK:
@@ -166,6 +184,13 @@ void SIM7020::set_Host(std::string app_protocol, std::string host, std::string p
   socket_port = port;
 }
 
+void SIM7020::set_Host(std::string app_protocol, std::string host, std::string port, std::string username, std::string password){
+  app_layer_protocol = app_protocol;
+  socket_host = host;
+  socket_port = port;
+  socket_user = username;
+  socket_password = password;
+}
 
 void SIM7020::set_HttpRequestOptions(std::string app_method, std::string page){
   app_layer_method = app_method;
@@ -202,9 +227,11 @@ void SIM7020::set_Packet(std::string packet){
 
 void SIM7020::PowerSaveMode(bool will_sleep){
   at_command("AT+IPR=115200", 1000);
+  at_command("AT+CEREG=4", 1000);
   at_command("AT+CPSMSTATUS=1", 500);
+  at_command("AT+CEREG?", 1000);
   if(will_sleep)
-    at_command("AT+CPSMS=1,,,\"01000111\",\"00000001\"", 60000);
+    at_command("AT+CPSMS=1,,,\"01000111\",\"00000001\"", 2000);
   else
     at_command("AT+CPSMS=0", 1000);
   delay(1000);
