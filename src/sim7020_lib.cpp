@@ -47,13 +47,13 @@ SIM7020::SIM7020(uint8_t rx_pin, uint8_t tx_pin, uint8_t pwr_pin, std::string ba
 	  Serial_AT.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin);
       delay(100);
 	  
-	    pwr = pwr_pin;
+      pwr = pwr_pin;
       pinMode(pwr_pin, OUTPUT);
       digitalWrite(pwr_pin, LOW);
       delay(1200);
       digitalWrite(pwr_pin, HIGH);      
-	    rf_band = band;
-	    eNextState = PDP_DEACT;
+      rf_band = band;
+      eNextState = PDP_DEACT;
 
       data_packet = ""; //default definitions
       http_version = "HTTP/1.1";
@@ -163,9 +163,8 @@ void SIM7020::NbiotManager(){
         break;
 
       case TCP_CLOSED:
-      Serial.println("Estado ainda n implementado - flag");
-	    return;
-        break;
+        Serial.println("Estado ainda n implementado - flag");
+	return;
     }
   }
 }
@@ -199,7 +198,7 @@ void SIM7020::set_HttpRequestOptions(std::string app_method, std::string page){
 
 
 void SIM7020::set_RFBand(std::string band){
-	rf_band = band;
+  rf_band = band;
 }
 
 
