@@ -81,8 +81,8 @@ class SIM7020
     void set_MqttSubscriptionOptions(std::string topic, std::string qos);
     void set_Packet(std::string packet);
   	
-	  void HwInit(void);
-	  void NbiotManager(void);
+    void HwInit(void);
+    void NbiotManager(void);
     void PowerSaveMode(bool will_sleep);
 };
 
