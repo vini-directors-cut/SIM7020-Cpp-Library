@@ -16,12 +16,14 @@ std::string at_CommandWithReturn(String command, uint16_t timeout){
   
   unsigned long lastRead = millis();
   while(millis() - lastRead < timeout){   
-    while(Serial_AT.available()){
+    if(Serial_AT.available()){
       res = Serial_AT.readString().c_str();
       #ifdef DEBUG_MODE
       printf(res.c_str());
       #endif
       lastRead = millis();
+      if(res.find("OK") != std::string::npos)
+        break;      
     }
   }
   return res;
@@ -33,9 +35,12 @@ void at_command(String command, uint32_t timeout) {
 
   unsigned long lastRead = millis();
   while(millis() - lastRead < timeout) {
-    while(Serial_AT.available()) {
+    if(Serial_AT.available()) {
+      #ifdef DEBUG_MODE
       Serial.println(Serial_AT.readString());
+      #endif
       lastRead = millis();
+      break;
     }
   }
 }
@@ -72,7 +77,7 @@ void SIM7020::HwInit(){
   #endif
   
 
-  do{
+  do{ //corrigir esse processo de hard reset (criar funçao de hard e soft resets)
     command_response = at_CommandWithReturn("AT+CPIN?", 1000);
     //digitalWrite(pwr, LOW);
     delay(2000);
@@ -161,8 +166,12 @@ void SIM7020::NbiotManager(){
         break;
 
       case TCP_CLOSED:
-        Serial.println("Estado ainda n implementado - flag");
-	return;
+        eNextState = IP_STATUS;
+	      return;
+
+      default: //esse default apenas serve para detecção de falhas na maquina de estados
+        Serial.println("Estado desconhecido");
+        eNextState = PDP_DEACT;      
     }
   }
 }

@@ -12,8 +12,8 @@ void setup() {
   nb_modem.set_NetworkCredentials("virtueyes.com.br","virtu","virtu");
   nb_modem.HwInit();
     
-  nb_modem.set_Host("http", "www.cropnet.us", "80");
-  nb_modem.set_HttpRequestOptions("POST", "/pic/gateway/data");
+  nb_modem.set_Host("http", "httpbin.org", "80");
+  nb_modem.set_HttpRequestOptions("GET", "/get");
   nb_modem.set_HttpVersion("HTTP/1.1");
   
   nb_modem.set_HttpHeader("Host: www.cropnet.us\r\n"
@@ -31,11 +31,11 @@ void setup() {
   
   nb_modem.NbiotManager(); //state machine
   
-  nb_modem.PowerSaveMode(true);
-  Serial.println("SIM7020 entered in sleep mode ZzZzZzZzZZZz...");
-  delay(20000);
+  //nb_modem.PowerSaveMode(true);
+  //Serial.println("SIM7020 entered in sleep mode ZzZzZzZzZZZz...");
+  //delay(20000);
 
-  nb_modem.PowerSaveMode(false);
+  //nb_modem.PowerSaveMode(false);
   
 }
 
