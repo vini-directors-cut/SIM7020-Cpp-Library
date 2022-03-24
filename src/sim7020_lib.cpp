@@ -13,7 +13,6 @@ std::string command_response;
 std::string at_CommandWithReturn(String command, uint16_t timeout){
   std::string res;
   Serial_AT.println(command);
-  while(Serial_AT.available() == 0);
   
   unsigned long lastRead = millis();
   while(millis() - lastRead < timeout){   
@@ -31,7 +30,6 @@ std::string at_CommandWithReturn(String command, uint16_t timeout){
 
 void at_command(String command, uint32_t timeout) {
   Serial_AT.println(command);
-  while (Serial_AT.available() == 0);
 
   unsigned long lastRead = millis();
   while(millis() - lastRead < timeout) {
