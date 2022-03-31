@@ -10,7 +10,7 @@
 #define DEBUG_MODE
 #define Serial_AT  Serial1
 #define UART_BAUD  115200
-
+#define PIN_DTR    25
 
 void at_command(String command, uint32_t timeout);
 std::string at_CommandWithReturn(String command, uint16_t timeout);
@@ -19,7 +19,6 @@ class SIM7020
 {
   private:
   uint8_t pwr;
-  uint8_t dtr;
   
   std::string rf_band;
   std::string apn;
@@ -28,8 +27,6 @@ class SIM7020
   std::string transport_layer_protocol;
   std::string socket_host;
   std::string socket_port;
-  std::string socket_user;
-  std::string socket_password;
   std::string app_layer_protocol;
   std::string app_layer_method;
   std::string app_payload;
@@ -56,34 +53,33 @@ class SIM7020
   }eNbiotStateMachine;
   
   eNbiotStateMachine eNextState;
-
-  eNbiotStateMachine NetworkAttachHandler(void);
-  eNbiotStateMachine StartTaskHandler(void);
-  eNbiotStateMachine BringUpGprsHandler(void);
-  eNbiotStateMachine WaitGprsHandler(void);
-  eNbiotStateMachine GetLocalIpHandler(void);
-  eNbiotStateMachine SocketConnectHandler(void);
-  eNbiotStateMachine WaitSocketHandler(void);
-  eNbiotStateMachine DataSendHandler(void);
-  eNbiotStateMachine WaitSocketCloseHandler(void);
   
   public:
     SIM7020(uint8_t rx_pin, uint8_t tx_pin, uint8_t pwr_pin, std::string band);
-  
-    void set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd);
-    void set_RFBand(std::string band);
+
+	  void set_NetworkCredentials(std::string user_apn, std::string username, std::string user_psswd);
+	  void set_RFBand(std::string band);
     void set_Json(std::string app_payload);
     void set_Host(std::string app_protocol, std::string host, std::string port);
-    void set_Host(std::string app_protocol, std::string host, std::string port, std::string username, std::string password);
     void set_HttpVersion(std::string version);
     void set_HttpHeader(std::string header);
     void set_HttpRequestOptions(std::string app_method, std::string http_page);
     void set_MqttSubscriptionOptions(std::string topic, std::string qos);
     void set_Packet(std::string packet);
   	
-    void HwInit(void);
-    void NbiotManager(void);
-    void PowerSaveMode(bool will_sleep);
+	  void HwInit(void);
+	  void NbiotManager(void);
+    void HardReset(void);
+	
+    eNbiotStateMachine NetworkAttachHandler(void);
+    eNbiotStateMachine StartTaskHandler(void);
+    eNbiotStateMachine BringUpGprsHandler(void);
+    eNbiotStateMachine WaitGprsHandler(void);
+    eNbiotStateMachine GetLocalIpHandler(void);
+    eNbiotStateMachine SocketConnectHandler(void);
+    eNbiotStateMachine WaitSocketHandler(void);
+    eNbiotStateMachine DataSendHandler(void);
+    eNbiotStateMachine WaitSocketCloseHandler(void);
 };
 
 

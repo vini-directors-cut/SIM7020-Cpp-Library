@@ -11,19 +11,16 @@ std::string command_response;
 
 
 std::string at_CommandWithReturn(String command, uint16_t timeout){
-  std::string res;
+  std::string res = "";
   Serial_AT.println(command);
-  
   unsigned long lastRead = millis();
   while(millis() - lastRead < timeout){   
     if(Serial_AT.available()){
       res = Serial_AT.readString().c_str();
-      #ifdef DEBUG_MODE
-      printf(res.c_str());
-      #endif
+      Serial.println(res.c_str());
       lastRead = millis();
       if(res.find("OK") != std::string::npos)
-        break;      
+        break;
     }
   }
   return res;
@@ -32,13 +29,10 @@ std::string at_CommandWithReturn(String command, uint16_t timeout){
 
 void at_command(String command, uint32_t timeout) {
   Serial_AT.println(command);
-
   unsigned long lastRead = millis();
   while(millis() - lastRead < timeout) {
     if(Serial_AT.available()) {
-      #ifdef DEBUG_MODE
       Serial.println(Serial_AT.readString());
-      #endif
       lastRead = millis();
       break;
     }
@@ -46,47 +40,67 @@ void at_command(String command, uint32_t timeout) {
 }
 
 
-SIM7020::SIM7020(uint8_t rx_pin, uint8_t tx_pin, uint8_t pwr_pin, std::string band){
-	  Serial_AT.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin);
-      delay(100);
-	  
-      pwr = pwr_pin;
-      pinMode(pwr_pin, OUTPUT);
-      digitalWrite(pwr_pin, LOW);
-      delay(1200);
-      digitalWrite(pwr_pin, HIGH);      
-      rf_band = band;
-      eNextState = PDP_DEACT;
-
-      data_packet = ""; //default definitions
-      http_version = "HTTP/1.1";
-      mqtt_version = "3";
+ SIM7020::SIM7020(uint8_t rx_pin, uint8_t tx_pin, uint8_t pwr_pin, std::string band){
+  Serial_AT.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin);
+  delay(100);
+	pwr = pwr_pin;
+  pinMode(pwr_pin, OUTPUT);
+  digitalWrite(pwr_pin, HIGH);
+  rf_band = band; 	  
+	eNextState = PDP_DEACT;
+  data_packet = ""; //default definitions
+  http_version = "HTTP/1.1";
+  mqtt_version = "3";
 }
 
+
+void SIM7020::HardReset(void){
+  digitalWrite(pwr, LOW);
+  delay(1200);
+  digitalWrite(pwr, HIGH);
+  
+  delay(5000);
+  
+  digitalWrite(pwr, LOW);
+  delay(1200);
+  digitalWrite(pwr, HIGH);
+  delay(100);
+}
 
 void SIM7020::HwInit(){
   std::string aux_string;
 
-  #ifdef DEBUG_MODE
-  at_command("AT", 500);
-  at_command("ATE1", 500);
-  #endif
-
-  #ifndef DEBUG_MODE
-  at_command("ATE0", 500);
-  #endif
+  do{ 
+      HardReset();
+      while( ((command_response.find("OK")) ==  std::string::npos))
+        command_response = at_CommandWithReturn("AT", 500);
+      
+      command_response.clear();
+      Serial.println("UART interface ready!");
   
-
-  do{ //corrigir esse processo de hard reset (criar funçao de hard e soft resets)
-    command_response = at_CommandWithReturn("AT+CPIN?", 1000);
-    //digitalWrite(pwr, LOW);
-    delay(2000);
-    //digitalWrite(pwr, HIGH);
-  } while( (command_response.find("ERROR")) !=  std::string::npos );
+      #ifdef DEBUG_MODE
+      at_command("ATE1", 500);
+      #endif
+  
+      #ifndef DEBUG_MODE
+      at_command("ATE0", 500);
+      #endif
+  
+      command_response = at_CommandWithReturn("AT+CPIN?", 5000);
+      Serial.print("command_response:  ");
+      Serial.println(command_response.c_str());
+      Serial.println("=========================================");
+    } while( ((command_response.find("ERROR")) !=  std::string::npos) || ((command_response.find("NOT INSERTED")) !=  std::string::npos) );
 
   command_response.clear();
 
   aux_string = "AT*MCGDEFCONT=\"IP\",\"" + apn + "\",\"" + user + "\",\"" + psswd + "\"";
+
+  command_response = at_CommandWithReturn("AT+COPS=0,0", 2000);
+  while( ((command_response.find("ERROR")) !=  std::string::npos) || ((command_response.find("NOT INSERTED")) !=  std::string::npos) ) {
+    HardReset();
+    command_response = at_CommandWithReturn("AT+COPS=0,0", 2000);
+  }
   
   at_command("AT+CFUN=0", 1000); //turn-off rf
   at_command("AT+CREG=2", 500);
@@ -100,8 +114,7 @@ void SIM7020::HwInit(){
   
   at_command("AT+COPS=0,0", 1000);
   at_command("AT+CGCONTRDP", 1000);
-  at_command("AT+RETENTION=1", 1000);
-  
+
   #ifdef DEBUG_MODE
   at_command("AT+CMEE=2",500);
   Serial.print("SIM7020 firmware version: ");
@@ -126,7 +139,7 @@ void SIM7020::HwInit(){
 
 
 void SIM7020::NbiotManager(){
-  SIM7020::PowerSaveMode(false);
+  
   while(1){
     switch(eNextState){
       case PDP_DEACT:
@@ -169,9 +182,9 @@ void SIM7020::NbiotManager(){
         eNextState = IP_STATUS;
 	      return;
 
-      default: //esse default apenas serve para detecção de falhas na maquina de estados
-        Serial.println("Estado desconhecido");
-        eNextState = PDP_DEACT;      
+      default:
+        Serial.println("FLAG - Estado desconhecido!");
+        return;
     }
   }
 }
@@ -190,13 +203,6 @@ void SIM7020::set_Host(std::string app_protocol, std::string host, std::string p
   socket_port = port;
 }
 
-void SIM7020::set_Host(std::string app_protocol, std::string host, std::string port, std::string username, std::string password){
-  app_layer_protocol = app_protocol;
-  socket_host = host;
-  socket_port = port;
-  socket_user = username;
-  socket_password = password;
-}
 
 void SIM7020::set_HttpRequestOptions(std::string app_method, std::string page){
   app_layer_method = app_method;
@@ -205,7 +211,7 @@ void SIM7020::set_HttpRequestOptions(std::string app_method, std::string page){
 
 
 void SIM7020::set_RFBand(std::string band){
-  rf_band = band;
+	rf_band = band;
 }
 
 
@@ -227,20 +233,6 @@ void SIM7020::set_MqttSubscriptionOptions(std::string topic, std::string qos){
 
 void SIM7020::set_Packet(std::string packet){
   data_packet = packet;
-}
-
-
-
-void SIM7020::PowerSaveMode(bool will_sleep){
-  at_command("AT+IPR=115200", 1000);
-  at_command("AT+CEREG=4", 1000);
-  at_command("AT+CPSMSTATUS=1", 500);
-  at_command("AT+CEREG?", 1000);
-  if(will_sleep)
-    at_command("AT+CPSMS=1,,,\"01000111\",\"00000001\"", 2000);
-  else
-    at_command("AT+CPSMS=0", 1000);
-  delay(1000);
 }
 
 
@@ -351,21 +343,26 @@ SIM7020::eNbiotStateMachine SIM7020::DataSendHandler(){
   std::string aux_string, cipsend_str;
 
   if(app_layer_protocol == "http"){
-    std::string a;
-    String d = (String) data_packet.size();
-    for(uint8_t char_byte = 0; char_byte < d.length(); char_byte++)
-      a.push_back(d[char_byte]);
-    http_header += "Content-Length: "; 
-    http_header += a.c_str();
-    http_header += "\r\n";
+      if(app_layer_method == "POST"){
+      Serial.println("hemlo");
+      std::string a;
+      String d = (String) data_packet.size();
+      for(uint8_t char_byte = 0; char_byte < d.length(); char_byte++)
+        a.push_back(d[char_byte]);
+      http_header += "Content-Length: "; 
+      http_header += a.c_str();
+      http_header += "\r\n";
+    }
     
     Serial.print(http_header.c_str());
     
-    aux_string = app_layer_method + " " + http_page + " " + http_version + "\r\n" + http_header + "\r\n" + data_packet;
+    aux_string = app_layer_method + " " + http_page + " " + http_version + "\r\n" + http_header + "\r\n";
+    if(app_layer_method != "GET")
+      aux_string += data_packet;
+      
     at_command("AT+CIPSEND", 15000);
     Serial_AT.write(aux_string.c_str());
     Serial_AT.write(26);
-    data_packet = "";
     at_command("AT+CIPCLOSE", 1000);
     command_response = at_CommandWithReturn("AT+CIPSTATUS", 500);
     if((command_response.find("TCP CLOSED")) !=  std::string::npos)
